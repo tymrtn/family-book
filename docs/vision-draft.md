@@ -85,14 +85,23 @@ Milestones are the structural events that shape the tree AND generate Moments:
 
 ## Platform Integration — Where Each Fits
 
-### WhatsApp (highest value, lowest friction)
-**Role:** Primary family communication channel. Photos and videos flow here naturally.
+### WhatsApp (TBD — needs deep research)
+**Role:** Potentially a bridge between the sovereign family domain and where family members already live.
 
-**Integration:**
-- **Inbound:** Family members forward photos from WhatsApp to a Family Book bot number or email. "Forward this to family@martin.fm and it gets added."
-- **Profile sync:** Weekly cron pulls profile photos via wacli (passive, no family action needed)
-- **Outbound notifications:** Birthday reminders, milestone alerts, new Moments digest — pushed to WhatsApp via wacli
-- **Why it fits:** Бабушка already uses WhatsApp. She already sends photos there. Meet her where she is.
+**Reality check:** WhatsApp Business API is no longer free. Bot pricing, message template restrictions, and Meta's shifting policies make this a moving target. wacli works for personal-account automation but may not scale to a family group notification system without violating ToS.
+
+**Possible fits:**
+- **Family WhatsApp group as bridge:** A shared group where Family Book posts digests or milestone alerts. Family members already live here. But this is manual or semi-automated at best.
+- **Profile photo sync:** wacli can still pull profile photos passively (low-risk, no bot API needed)
+- **Inbound forwarding:** "Forward this photo to family@martin.fm" works via email, doesn't need WhatsApp API at all
+
+**What needs research before committing:**
+- Current WhatsApp Business API pricing (per-message costs, monthly fees)
+- WhatsApp Cloud API vs on-premise API vs wacli personal automation
+- ToS risk: is automated posting to a family group a violation?
+- Alternative: just use the family WhatsApp group manually as a "hey, new photos on Family Book" notification channel
+
+**Verdict:** Don't build WhatsApp integration into the spec until the research is done. It's either a high-value bridge or a compliance liability. No middle ground.
 
 ### Email (Envelope)
 **Role:** Ingestion pipeline for data exports + magic link auth + milestone notifications.
@@ -132,14 +141,29 @@ Milestones are the structural events that shape the tree AND generate Moments:
 - **Embed:** Instagram oEmbed for linked posts
 - **Why it fits:** Travel photos, food photos, life updates. The stuff families already share on Instagram but scattered across individual accounts.
 
-### Telegram
-**Role:** Alternative notification channel + bot interface for power users.
+### Telegram (proven portal — high confidence)
+**Role:** Primary notification channel + bot interface + photo ingestion.
+
+**Why Telegram is the strongest candidate:** OpenClaw has already proven that Telegram is a viable portal into private systems. The bot API is free, well-documented, stable, and supports rich media (photos, videos, inline keyboards, buttons). No Business API pricing games. No Meta policy shifts.
 
 **Integration:**
-- **Notifications:** Milestone alerts, birthday reminders, digest — via Telegram bot
-- **Bot commands:** `/recent` (latest Moments), `/birthday` (upcoming), `/tree` (link to tree view)
-- **Photo upload:** Send photos to the Family Book Telegram bot → auto-adds to sender's Moments
-- **Why it fits:** Tyler's family uses Telegram. Some Russian family members prefer it to WhatsApp.
+- **Family Book Telegram Bot:** A dedicated bot that family members add. This is the primary interface for non-web interactions.
+- **Notifications:** Milestone alerts, birthday reminders, weekly Moments digest — pushed via bot
+- **Bot commands:** `/recent` (latest Moments), `/birthday` (upcoming), `/tree` (link to tree view), `/upload` (add photo to Moments)
+- **Photo upload:** Send photos directly to the bot → auto-adds to sender's Moments feed
+- **Inline keyboards:** "New photo from Tyler! [View] [❤️] [Reply]"
+- **Why it fits:** Tyler's family uses Telegram. Russian family members prefer it. The bot API has zero cost. OpenClaw proves the architecture works.
+
+### Signal (optional — for privacy maximalists)
+**Role:** Alternative notification + ingestion channel for family members who prioritize privacy.
+
+**Integration:**
+- OpenClaw has demonstrated Signal as a viable portal
+- Same bot-like interaction pattern as Telegram but with Signal's encryption guarantees
+- Photo ingestion: send photos to a Signal number → Family Book receives via OpenClaw bridge
+- Notifications: milestone alerts, digest
+- **Why it fits:** If the whole point is data sovereignty, offering a Signal channel is philosophically aligned. Some family members will actively prefer it over Telegram.
+- **Trade-off:** Signal's bot/automation story is less mature than Telegram's. OpenClaw bridges this but it's an additional dependency.
 
 ### Mastodon / ActivityPub (Phase 4+)
 **Role:** Federated family presence for the post-platform future.
@@ -168,11 +192,14 @@ Milestones are the structural events that shape the tree AND generate Moments:
             │                    │                     │
     ┌───────┼────────┐   ┌──────┼──────┐       ┌──────┼──────┐
     │       │        │   │      │      │       │      │      │
-  Email  WhatsApp  TikTok  Email  WhatsApp  Facebook  Google  Magic
-(Envelope) (wacli) (oEmbed) (SMTP) (wacli)  (OAuth)  (OAuth) Link
+  Email  Telegram TikTok  Email Telegram  Facebook  Google  Magic
+(Envelope) (Bot) (oEmbed) (SMTP)  (Bot)   (OAuth)  (OAuth) Link
     │       │        │      │      │       
   Photos  Photos   Links  Digest Birthday  
-  Exports Profile  Embeds Weekly  Alerts   
+  Exports Upload   Embeds Weekly  Alerts   
+  
+  Optional: Signal (via OpenClaw bridge)
+  Optional: WhatsApp (pending research on API costs + ToS)
 ```
 
 ## Data Sovereignty — The Real Pitch
@@ -276,18 +303,19 @@ Everything in spec v2 Phase 1. This is the skeleton.
 - Memorial mode for deceased persons
 
 ### Phase 2 — Notifications + Ingestion (the glue)
-- Email ingestion (forward photos → Moments)
-- WhatsApp notifications (birthday reminders, new Moments digest)
-- Telegram bot (notifications + photo upload)
+- Telegram bot (primary: notifications + photo upload + commands)
+- Email ingestion via Envelope (forward photos → Moments)
+- Email notifications (weekly digest, milestone alerts)
+- Signal bridge via OpenClaw (optional, for privacy-first family members)
 - Magic link + invite improvements
 - i18n (en, ru, es)
 
 ### Phase 3 — Platform Import (the data liberation)
-- Facebook data export ingestion
+- Facebook data export ingestion (one-time photo + profile import)
 - Instagram data export ingestion
-- WhatsApp profile photo sync
 - TikTok/Instagram oEmbed in Moments
 - GEDCOM import pipeline
+- WhatsApp integration (IF research confirms viable API + ToS path)
 
 ### Phase 4 — Privacy Engine + Federation
 - Graph-distance ACL
