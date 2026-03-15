@@ -780,6 +780,7 @@ Family Book must deliver rich media notifications to family members across every
 | **MMS** (Twilio) | 🇺🇸🇨🇦 only | Photo + caption in native texts | ~$0.02/msg | Reply emoji → reaction |
 | **WhatsApp Business** | 🌍 ~80% global (LatAm, Europe, Africa, Asia) | Photo + caption + reaction buttons | ~$0.005-0.08/msg | Reply emoji → reaction |
 | **Telegram bot** | 🌍 strong in Russia/E.Europe, growing globally | Photo + caption + inline buttons | FREE | Tap button → reaction |
+| **Signal** (OpenClaw bridge) | 🌍 growing, privacy-first users | Photo + caption via E2E encrypted channel | FREE (bridge cost only) | Reply emoji → reaction |
 | **Email** | 🌍 100% (universal fallback) | Rich HTML digest with embedded photos | ~$0.0001/email | Click reaction link → reaction |
 
 **Routing logic (per person, configured once by admin):**
@@ -789,6 +790,7 @@ Family Book must deliver rich media notifications to family members across every
 | `push_channel = auto` | Route by country: US/CA → MMS, LatAm/Europe/Africa → WhatsApp, Russia → Telegram | Email |
 | `push_channel = whatsapp` | WhatsApp Business API | Email |
 | `push_channel = telegram` | Telegram bot | Email |
+| `push_channel = signal` | Signal via OpenClaw bridge | Email |
 | `push_channel = sms` | SMS/MMS (MMS if US/CA, SMS+link if international) | Email |
 | `push_channel = email` | Email only | — |
 
@@ -812,7 +814,21 @@ Family Book must deliver rich media notifications to family members across every
 - This is the MOST important integration after email — covers the largest global audience
 - Research needed: current pricing tiers, template approval process, monthly costs for a family of 50
 
-**The principle:** Family Book doesn't care HOW the notification reaches grandma. It cares THAT it reaches her, with the photo, and she can react. The router abstracts the channel. Adding new channels later (LINE, WeChat, RCS) is just a new adapter in the router.
+**Signal — the philosophically aligned option:**
+- E2E encrypted, nonprofit, open protocol. If Family Book is about data sovereignty, Signal shares that DNA.
+- OpenClaw already has a working Signal bridge — proven delivery channel.
+- No business API (requires unofficial bridge), no rich interaction (no inline buttons).
+- But: photo delivery + emoji reply → reaction works through the OpenClaw bridge.
+- Position: peer to Telegram as a preference option, not auto-routed by country (Signal adoption is preference-based, not geography-based).
+
+**Channel resilience — the real argument for multi-channel:**
+- If Telegram goes dark in Russia (happening now), system falls back to email.
+- If WhatsApp gets banned somewhere, same thing.
+- If MMS dies because carriers kill SMS, router adapts.
+- No single channel dependency. No "our family communication breaks because one government had a bad day."
+- Email is federated and no single government controls it. It's always the final fallback.
+
+**The principle:** Family Book doesn't care HOW the notification reaches grandma. It cares THAT it reaches her, with the photo, and she can react. The router abstracts the channel. Adding new channels later (LINE, WeChat, RCS) is just a new adapter.
 
 #### Two-Way Reactions via Push
 
@@ -826,7 +842,7 @@ Grandma doesn't need to log in to react. She reacts WHERE she already is:
 
 | Setting | Options | Default |
 |---------|---------|---------|
-| `push_channel` | auto, whatsapp, telegram, sms, email, none | auto |
+| `push_channel` | auto, whatsapp, telegram, signal, sms, email, none | auto |
 | `push_phone` | E.164 phone number | from Person.contact_whatsapp or contact_signal |
 | `push_email` | email address | from Person.contact_email |
 | `push_telegram_id` | Telegram user ID | from linked Telegram account |
