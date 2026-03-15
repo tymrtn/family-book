@@ -1,1316 +1,1015 @@
-# Family Book — Phase 1 (MVP) Implementation Plan
+# Family Book — Phase 1 MVP Implementation Plan
 
-**Date:** 2026-03-15
-**Status:** Planning
-**Scope:** Repo setup, data model + SQLite, Facebook OAuth, manual tree entry (admin), basic tree visualization, person cards, mobile-first responsive design, Railway deployment.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Out of scope for Phase 1:** Facebook data export ingestion, WhatsApp sync, graph-distance privacy enforcement, world map, birthday calendar, i18n, PWA, ActivityPub.
+**Goal:** Build a working private family tree web app with Facebook OAuth login, interactive D3 tree visualization, privacy-aware person cards, and Railway deployment — ready for Tyler's family to use.
+
+**Architecture:** Python FastAPI backend serving static HTML/CSS/JS. SQLite database via SQLAlchemy ORM. Session-based auth using server-side session tokens in a DB table. Tree rendered client-side with D3.js v7, data sourced from a `/api/tree` JSON endpoint. No SPA framework — static HTML shells enhanced with vanilla JS.
+
+**Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.0, Alembic, Pydantic-settings, httpx, cryptography (Fernet), D3.js v7, vanilla HTML/CSS/JS, Railway (hosting + SQLite volume).
 
 ---
 
-## 1. Directory & File Structure
+## Pre-Implementation: Human Actions Required Before Any Code Runs
+
+These cannot be automated. Block implementation on resolving them first.
+
+- [ ] **Facebook Developer App registration**
+  - developers.facebook.com → Create App → Consumer type → App name: "Family Book"
+  - Add "Facebook Login" product
+  - Set Valid OAuth Redirect URIs: `http://localhost:8000/auth/callback` AND `https://<railway-domain>/auth/callback`
+  - Copy App ID and App Secret → become `FB_APP_ID` and `FB_APP_SECRET`
+  - In App Roles → Testers: add every family member who will test in dev mode (max 40 total)
+  - **MVP scope:** Only request `public_profile` and `email`. `user_photos` and `user_friends` require App Review (2-4 weeks). Phase 1 works without them.
+
+- [ ] **Identify root person**
+  - Luna is the tree root. Her DB row must NOT contain her real name.
+  - Store as `first_name="Our"`, `last_name="Family"`, `display_name="Our Family"`
+  - Document in CLAUDE.md: "Root person's real name must never appear in code, templates, or API responses."
+
+- [ ] **Generate stable UUIDs for the seed file**
+  - Run `python -c "import uuid; [print(uuid.uuid4()) for _ in range(20)]"` once
+  - Assign UUIDs to each family member and hardcode them into `data/family_tree.json`
+  - These UUIDs must never change after the first production seed
+
+- [ ] **Decide domain** — Railway auto-subdomain (`<name>.up.railway.app`) is fine for Phase 1
+
+---
+
+## Directory Structure
 
 ```
 family-book/
-├── SPEC.md
-├── CLAUDE.md
+│
+├── CLAUDE.md                        # Dev instructions: stack, env vars, run/test/deploy commands
+├── SPEC.md                          # (already exists)
+├── .env.example                     # All required env vars listed, no secrets
+├── .env                             # Local secrets (gitignored)
 ├── .gitignore
-├── .env.example                # Template for required env vars
-├── pyproject.toml              # Python project config (deps, scripts, metadata)
-├── Dockerfile                  # Multi-stage build for Railway
-├── .dockerignore
-├── alembic.ini                 # DB migration config
+├── pyproject.toml                   # Project metadata + pinned dependencies
+├── Dockerfile                       # Production container
+├── railway.toml                     # Railway build + deploy config
+├── alembic.ini                      # Alembic migration config
+│
+├── docs/
+│   └── implementation-plan.md       # This file
+│
 ├── migrations/
-│   ├── env.py                  # Alembic environment setup
+│   ├── env.py                       # Alembic env: imports Base, configures engine from DATABASE_URL
 │   └── versions/
-│       └── 001_initial_schema.py   # Initial tables
-├── seed.json                   # Tyler's initial family tree data
-├── app/
+│       └── 20260315_001_initial.py  # Initial schema migration (date-sorted prefix)
+│
+├── backend/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI app factory, CORS, lifespan, mount static
-│   ├── config.py               # Settings via pydantic-settings (env vars)
-│   ├── database.py             # SQLite engine, session factory, get_db dependency
-│   ├── models.py               # SQLAlchemy ORM models
-│   ├── schemas.py              # Pydantic request/response schemas
-│   ├── auth.py                 # Facebook OAuth logic, token encryption
-│   ├── graph.py                # BFS relationship computation, labeling
-│   ├── dependencies.py         # FastAPI deps (current_user, require_admin)
-│   ├── seed.py                 # CLI script to seed initial family data
+│   ├── main.py                      # FastAPI app: lifespan, router registration, static file mounts
+│   ├── config.py                    # Pydantic Settings class — all env vars, fail-fast if missing
+│   ├── database.py                  # Engine, session factory, SQLite startup pragmas
+│   ├── models.py                    # SQLAlchemy ORM: Person, Relationship, Session, ImportedAsset
+│   ├── schemas.py                   # Pydantic request/response models (separate from ORM)
+│   ├── auth.py                      # Session deps: get_current_user, require_auth, require_admin
+│   ├── oauth.py                     # FB OAuth: build URL, exchange code, fetch profile, upsert person
+│   ├── graph.py                     # BFS, relationship label computation, privacy layer calculation
+│   ├── seed.py                      # CLI: load data/family_tree.json, upsert all rows idempotently
 │   └── routers/
 │       ├── __init__.py
-│       ├── auth.py             # /auth/* endpoints (login, callback, logout, me)
-│       ├── persons.py          # /api/persons/* CRUD endpoints
-│       ├── relationships.py    # /api/relationships/* CRUD endpoints
-│       ├── tree.py             # /api/tree (full tree data for visualization)
-│       └── health.py           # /health endpoint for Railway
-├── templates/
-│   ├── base.html               # Shared HTML shell (head, nav, scripts)
-│   ├── landing.html            # Public landing page
-│   ├── tree.html               # Tree visualization page
-│   ├── person.html             # Person detail/card page
-│   └── admin.html              # Admin panel (CRUD forms)
-├── static/
+│       ├── auth_routes.py           # /auth/login, /auth/callback, /auth/logout, /auth/me
+│       ├── people.py                # CRUD /api/people and /api/people/{id}
+│       ├── relationships.py         # CRUD /api/relationships
+│       └── tree.py                  # GET /api/tree, GET /api/health
+│
+├── frontend/
+│   ├── index.html                   # Public landing page (no JS required)
+│   ├── app.html                     # Authenticated tree shell
 │   ├── css/
-│   │   └── style.css           # All styles (mobile-first, single file for MVP)
+│   │   ├── vars.css                 # All CSS custom properties: colors, spacing, type scale
+│   │   ├── reset.css                # Minimal reset: box-sizing, margins, baseline
+│   │   ├── layout.css               # Page shell, nav, mobile-first layout — logical properties
+│   │   ├── tree.css                 # SVG container, node rings, link lines, branch colors
+│   │   ├── card.css                 # Person card: bottom sheet (mobile), sidebar (tablet+)
+│   │   └── landing.css              # Landing page: hero, CTA button
 │   ├── js/
-│   │   ├── vendor/
-│   │   │   └── d3.v7.min.js    # Self-hosted D3.js (no CDN, no third-party scripts)
-│   │   ├── tree.js             # D3.js tree rendering + interaction
-│   │   ├── person-card.js      # Person card component behavior
-│   │   ├── admin.js            # Admin CRUD form handling
-│   │   └── auth.js             # OAuth redirect + session management
-│   └── img/
-│       ├── placeholder.svg     # Default avatar for persons without photos
-│       └── logo.svg            # Family Book logo/wordmark
-├── tests/
-│   ├── conftest.py             # Fixtures (test DB, test client, seed data)
-│   ├── test_auth.py            # OAuth flow tests (mocked Facebook)
-│   ├── test_persons.py         # Person CRUD tests
-│   ├── test_relationships.py   # Relationship CRUD tests
-│   ├── test_graph.py           # BFS, relationship labeling tests
-│   └── test_tree.py            # Tree data assembly tests
-└── docs/
-    └── implementation-plan.md  # This file
-```
-
-### File Purposes
-
-| File | Purpose |
-|------|---------|
-| `app/main.py` | Creates FastAPI instance, registers routers, mounts `/static`, configures Jinja2 templates, defines lifespan (DB init on startup, migrations) |
-| `app/config.py` | Single `Settings` class reading all env vars with defaults. Validates required vars at startup. |
-| `app/database.py` | Creates `aiosqlite` engine via SQLAlchemy async. Provides `get_db` async generator for DI. Sets WAL mode + foreign keys on every connection. |
-| `app/models.py` | All ORM models: `Person`, `Relationship`, `ImportedAsset`, `FacebookToken`, `Session` |
-| `app/schemas.py` | Pydantic models for every API request/response. Strict validation. |
-| `app/auth.py` | `FacebookOAuth` class: builds auth URL, exchanges code for token, fetches profile, downloads photo. Fernet encrypt/decrypt for tokens. |
-| `app/graph.py` | `FamilyGraph` class: loads relationships, runs BFS, computes relationship labels (English only for Phase 1). |
-| `app/dependencies.py` | `get_current_user`: extracts + validates session from cookie. `require_admin`: raises 403 if not admin. |
-| `app/seed.py` | CLI script: reads `seed.json`, upserts persons + relationships. Idempotent. |
-| `seed.json` | Initial family tree for Tyler to fill in manually. Human-friendly (names, not UUIDs). |
-
----
-
-## 2. Database Schema (SQLite)
-
-SQLite via SQLAlchemy async + aiosqlite. All UUIDs stored as TEXT. Dates stored as TEXT in ISO 8601 format.
-
-```sql
--- ============================================================
--- persons
--- ============================================================
-CREATE TABLE persons (
-    id TEXT PRIMARY KEY,                          -- UUID4 as hex string
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    patronymic TEXT,                              -- Russian/Arabic naming (store now, display Phase 4)
-    birth_last_name TEXT,                          -- Maiden name
-    nickname TEXT,
-    gender TEXT,                                   -- "male", "female", NULL. For relationship labels.
-    photo_url TEXT,                                -- Relative path to stored photo
-    birth_date TEXT,                               -- ISO 8601 (YYYY-MM-DD), nullable
-    death_date TEXT,                               -- ISO 8601, nullable. Presence = memorial.
-    location TEXT,                                 -- "Madrid, Spain" free text
-    country_code TEXT,                             -- ISO 3166-1 alpha-2 ("CA", "RU", "ES")
-    languages TEXT,                                -- JSON array: ["en", "ru", "es"]
-    bio TEXT,
-    contact_whatsapp TEXT,                         -- Phone with country code
-    contact_telegram TEXT,                         -- Username without @
-    contact_signal TEXT,                           -- Phone with country code
-    contact_email TEXT,
-    facebook_id TEXT UNIQUE,                       -- From OAuth, for deduplication
-    is_admin INTEGER NOT NULL DEFAULT 0,           -- 1 = admin (Tyler, Yuliya)
-    manually_added INTEGER NOT NULL DEFAULT 1,     -- 1 = added by admin, 0 = via OAuth
-    branch TEXT,                                   -- "martin", "semesock", "maternal" for color coding
-    privacy_layer_override INTEGER,                -- Admin override (NULL = computed). Phase 3 logic, column present now.
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX idx_persons_facebook_id ON persons(facebook_id);
-CREATE INDEX idx_persons_country_code ON persons(country_code);
-
--- ============================================================
--- relationships
--- Direction convention:
---   parent_child: person_a_id = PARENT, person_b_id = CHILD. Always.
---   spouse/ex_spouse/sibling: person_a_id < person_b_id (lexicographic) to prevent duplicates.
--- ============================================================
-CREATE TABLE relationships (
-    id TEXT PRIMARY KEY,                           -- UUID4
-    person_a_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-    person_b_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-    relationship_type TEXT NOT NULL CHECK (
-        relationship_type IN ('parent_child', 'spouse', 'sibling', 'ex_spouse')
-    ),
-    start_date TEXT,                               -- Marriage date, birth date, etc.
-    end_date TEXT,                                 -- Divorce date, death date
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'dissolved')),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(person_a_id, person_b_id, relationship_type)
-);
-
-CREATE INDEX idx_rel_person_a ON relationships(person_a_id);
-CREATE INDEX idx_rel_person_b ON relationships(person_b_id);
-
--- ============================================================
--- facebook_tokens (encrypted at rest)
--- ============================================================
-CREATE TABLE facebook_tokens (
-    person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
-    access_token_encrypted TEXT NOT NULL,           -- Fernet-encrypted long-lived token
-    token_expires_at TEXT,                          -- ISO 8601 datetime
-    scopes TEXT,                                    -- JSON array of granted scopes
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- ============================================================
--- sessions (server-side session storage)
--- ============================================================
-CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,                            -- UUID4, stored in HttpOnly cookie
-    person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,                       -- 30 days from creation
-    revoked INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX idx_sessions_person ON sessions(person_id);
-CREATE INDEX idx_sessions_expires ON sessions(expires_at);
-
--- ============================================================
--- imported_assets (Phase 1: profile_info from OAuth only. Photos/exports in Phase 2.)
--- ============================================================
-CREATE TABLE imported_assets (
-    id TEXT PRIMARY KEY,
-    person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-    source TEXT NOT NULL CHECK (
-        source IN ('facebook_oauth', 'facebook_export', 'whatsapp', 'manual')
-    ),
-    asset_type TEXT NOT NULL CHECK (
-        asset_type IN ('photo', 'post', 'profile_info', 'friends_list')
-    ),
-    data TEXT NOT NULL,                             -- JSON blob
-    imported_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX idx_assets_person ON imported_assets(person_id);
-```
-
-### Schema Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Contacts as flat columns (not JSON) | Simpler queries, no JSON path extraction for MVP |
-| `gender TEXT` column | Required for gendered labels ("Father" vs "Mother"). Nullable — defaults to gender-neutral. |
-| `branch TEXT` column | Admin-assigned. Used for tree color coding. Children inherit closest parent's branch. |
-| `privacy_layer_override INTEGER` | NULL = compute from graph (Phase 3). Integer = admin-forced layer. Column exists now to avoid migration later. |
-| `parent_child` directionality | Always `person_a = parent`, `person_b = child`. Critical invariant — enforced in application code. |
-| Symmetric relationship normalization | For `spouse`/`sibling`/`ex_spouse`, always store `min(a,b)` as `person_a_id`. Enforced in app code. |
-| Server-side sessions (not JWT) | Sessions can be revoked immediately. No JWT refresh complexity. |
-
-### Required SQLite PRAGMAs (set on every connection)
-
-```python
-# In database.py — connection event listener
-@event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_conn, connection_record):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")       # Write-Ahead Log for concurrent reads
-    cursor.execute("PRAGMA foreign_keys=ON")         # FK enforcement (OFF by default!)
-    cursor.execute("PRAGMA busy_timeout=5000")       # 5s wait on write lock
-    cursor.close()
+│   │   ├── api.js                   # Fetch wrapper: JSON parse, 401 redirect, error handling
+│   │   ├── app.js                   # DOMContentLoaded: fetch /api/tree, init tree + card
+│   │   ├── tree.js                  # D3.js tree: layout, nodes, links, zoom/pan
+│   │   ├── card.js                  # Person card: open, populate, close, swipe-dismiss
+│   │   └── vendor/
+│   │       └── d3.v7.min.js         # D3 self-hosted (no CDN runtime — privacy requirement)
+│   └── assets/
+│       ├── favicon.ico
+│       └── avatar-placeholder.svg   # Default when photo_url is null
+│
+├── data/
+│   ├── .gitkeep                     # Keep dir in git
+│   ├── family_tree.json             # Seed data: persons + relationships (committed)
+│   └── photos/                      # Downloaded FB profile photos (gitignored, Railway volume)
+│
+└── tests/
+    ├── conftest.py                  # Fixtures: in-memory SQLite, seeded DB, TestClient
+    ├── test_models.py               # ORM model constraints
+    ├── test_graph.py                # BFS, relationship labels, privacy layers (exhaustive)
+    ├── test_oauth.py                # OAuth flow with httpx mocked
+    ├── test_api_people.py           # CRUD endpoints, auth gates, privacy field gating
+    ├── test_api_tree.py             # Tree endpoint shape, root name assertion, layer gating
+    └── test_seed.py                 # Idempotency, is_root/is_admin invariants
 ```
 
 ---
 
-## 3. Facebook OAuth Flow
+## Database Schema
 
-### 3.1 Prerequisites
+### Table: `persons`
 
-1. Create a Facebook App at [developers.facebook.com](https://developers.facebook.com)
-2. App type: **Consumer**
-3. Add **Facebook Login** product
-4. Set Valid OAuth Redirect URI: `https://{DOMAIN}/auth/callback`
-5. For Phase 1, request only `public_profile` and `email` — these do **not** require Meta App Review
-6. `user_photos` and `user_friends` require App Review — defer to Phase 2
-7. Facebook App starts in **Development Mode**: only people with a role on the app (admin/developer/tester) can log in. Add each family member as a **Tester** in the app dashboard. Limit: 2000 testers. Sufficient for any family.
+Dates as ISO 8601 TEXT. Booleans as INTEGER 0/1. UUIDs as TEXT.
 
-### 3.2 Environment Variables
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | TEXT | PRIMARY KEY | UUID v4 from Python |
+| `first_name` | TEXT | NOT NULL | |
+| `last_name` | TEXT | NOT NULL | |
+| `patronymic` | TEXT | nullable | Russian/Arabic naming |
+| `birth_last_name` | TEXT | nullable | Maiden name |
+| `nickname` | TEXT | nullable | Shown in parentheses |
+| `display_name` | TEXT | nullable | Overrides first+last in ALL UI. Root node = "Our Family". |
+| `gender` | TEXT | nullable | "male", "female", or NULL → gender-neutral labels |
+| `photo_url` | TEXT | nullable | Local path `/photos/<uuid>.jpg` — downloaded from FB on login |
+| `birth_date` | TEXT | nullable | ISO 8601 |
+| `death_date` | TEXT | nullable | Non-null = memorial mode |
+| `location` | TEXT | nullable | Free text: "Madrid, Spain" |
+| `country_code` | TEXT | nullable | ISO 3166-1 alpha-2: "ES", "CA", "RU" |
+| `languages` | TEXT | nullable | JSON array serialized to text: `'["en","ru"]'` |
+| `bio` | TEXT | nullable | 1-3 sentences |
+| `branch` | TEXT | nullable | "martin", "semesock", "yuliya" — tree branch color assignment |
+| `contact_whatsapp` | TEXT | nullable | Digits only, no `+` or spaces: "17785551234" |
+| `contact_telegram` | TEXT | nullable | Username without @ |
+| `contact_signal` | TEXT | nullable | Digits only |
+| `contact_email` | TEXT | nullable | |
+| `facebook_id` | TEXT | UNIQUE, nullable | FB numeric user ID |
+| `facebook_token_encrypted` | TEXT | nullable | Fernet-encrypted long-lived token |
+| `is_admin` | INTEGER | NOT NULL DEFAULT 0 | |
+| `is_root` | INTEGER | NOT NULL DEFAULT 0 | Exactly one row = 1 |
+| `privacy_override` | INTEGER | nullable | Force layer 0-5. NULL = compute from BFS. |
+| `manually_added` | INTEGER | NOT NULL DEFAULT 1 | 0 = created by FB OAuth |
+| `name_display_order` | TEXT | NOT NULL DEFAULT 'western' | "western" or "eastern" |
+| `created_at` | TEXT | NOT NULL DEFAULT datetime('now') | |
+| `updated_at` | TEXT | NOT NULL DEFAULT datetime('now') | Must be updated on every write |
 
-```bash
-FACEBOOK_APP_ID=123456789
-FACEBOOK_APP_SECRET=abc123secret
-FACEBOOK_REDIRECT_URI=https://family.martin.fm/auth/callback
-SESSION_SECRET=<random 64-char hex string>         # Signs session cookies
-ENCRYPTION_KEY=<Fernet.generate_key() output>       # Encrypts Facebook tokens
-```
-
-### 3.3 Flow Sequence
-
-```
-Browser                    FastAPI                   Facebook                  SQLite
-  │                          │                          │                        │
-  │  GET /auth/login         │                          │                        │
-  │─────────────────────────>│                          │                        │
-  │                          │ Generate state token      │                        │
-  │                          │ Set oauth_state cookie    │                        │
-  │  302 → Facebook OAuth    │                          │                        │
-  │<─────────────────────────│                          │                        │
-  │                          │                          │                        │
-  │  User grants permissions │                          │                        │
-  │─────────────────────────────────────────────────────>│                        │
-  │                          │                          │                        │
-  │  302 → /auth/callback?code=XXX&state=YYY            │                        │
-  │─────────────────────────>│                          │                        │
-  │                          │                          │                        │
-  │                          │  Exchange code for token  │                        │
-  │                          │─────────────────────────>│                        │
-  │                          │  { access_token, 1-2hr } │                        │
-  │                          │<─────────────────────────│                        │
-  │                          │                          │                        │
-  │                          │  Exchange for long-lived  │                        │
-  │                          │─────────────────────────>│                        │
-  │                          │  { access_token, 60 day } │                        │
-  │                          │<─────────────────────────│                        │
-  │                          │                          │                        │
-  │                          │  GET /me?fields=...       │                        │
-  │                          │─────────────────────────>│                        │
-  │                          │  { id, name, email, pic } │                        │
-  │                          │<─────────────────────────│                        │
-  │                          │                          │                        │
-  │                          │  Download profile photo   │                        │
-  │                          │─────────────────────────>│                        │
-  │                          │  <binary jpg>             │                        │
-  │                          │<─────────────────────────│                        │
-  │                          │                          │                        │
-  │                          │  Upsert person + token    │                        │
-  │                          │──────────────────────────────────────────────────>│
-  │                          │  Create session            │                        │
-  │                          │──────────────────────────────────────────────────>│
-  │                          │                          │                        │
-  │  302 → /tree             │                          │                        │
-  │  Set-Cookie: session=UUID│                          │                        │
-  │<─────────────────────────│                          │                        │
-```
-
-### 3.4 Token Handling
-
-**Short-lived → Long-lived exchange (immediately after receiving short-lived token):**
-```
-GET https://graph.facebook.com/v19.0/oauth/access_token
-  ?grant_type=fb_exchange_token
-  &client_id={APP_ID}
-  &client_secret={APP_SECRET}
-  &fb_exchange_token={SHORT_LIVED_TOKEN}
-→ { access_token: "...", token_type: "bearer", expires_in: 5184000 }
-```
-
-**Storage:**
-- Encrypt long-lived token with `cryptography.fernet.Fernet(settings.encryption_key)`
-- Store encrypted blob in `facebook_tokens.access_token_encrypted`
-- Store `token_expires_at` (now + `expires_in` seconds)
-- Decrypt only when making Graph API calls
-
-**Refresh strategy (Phase 1):**
-- No automatic refresh. Long-lived tokens last ~60 days.
-- We only fetch profile data once at login. No ongoing API access needed for MVP.
-- If a token expires and we need it later, the user simply re-authenticates.
-
-### 3.5 CSRF Protection
-
-- Generate random 32-byte hex string as `state`
-- Store in `oauth_state` cookie: `HttpOnly`, `Secure`, `SameSite=Lax`, `max_age=600` (10 min)
-- On callback: verify `request.query_params["state"] == request.cookies["oauth_state"]`
-- Delete `oauth_state` cookie after verification
-
-### 3.6 Person Matching on Callback
-
-On OAuth callback, match the Facebook user to a Person record:
-
-1. **`facebook_id` match** → Found: update token + photo, create session, log in
-2. **Email match** (if no `facebook_id` match) → Found: set `facebook_id`, update token + photo, create session
-3. **No match** → Create new Person with `manually_added=0`, `is_admin=0`. Admin must later create relationships to position them in the tree.
-
-### 3.7 Scopes Summary
-
-| Scope | Purpose | App Review Required? |
-|-------|---------|---------------------|
-| `public_profile` | Name, profile picture, Facebook ID | No |
-| `email` | Email for matching + contact | No |
-| `user_photos` | Photo import (Phase 2) | **Yes** |
-| `user_friends` | Auto-discover family (Phase 2) | **Yes** |
-
-### 3.8 Key Implementation Functions (`app/auth.py`)
-
-```python
-async def build_login_url(state: str) -> str:
-    """Construct Facebook OAuth dialog URL with state param."""
-
-async def exchange_code_for_token(code: str) -> dict:
-    """POST to /oauth/access_token. Returns {access_token, token_type, expires_in}."""
-
-async def exchange_for_long_lived_token(short_token: str) -> dict:
-    """GET /oauth/access_token with grant_type=fb_exchange_token."""
-
-async def fetch_profile(access_token: str) -> dict:
-    """GET /me?fields=id,first_name,last_name,email,picture.width(400).
-    Returns {id, first_name, last_name, email, picture: {data: {url}}}."""
-
-async def download_and_store_photo(photo_url: str, person_id: str) -> str:
-    """Download Facebook photo URL to /data/photos/{person_id}.jpg.
-    Returns relative path for storage in persons.photo_url.
-    Facebook CDN URLs expire — must download immediately."""
-
-def encrypt_token(token: str) -> str:
-    """Fernet encrypt. Key from settings.encryption_key."""
-
-def decrypt_token(encrypted: str) -> str:
-    """Fernet decrypt."""
-```
-
-Use `httpx.AsyncClient` for all Facebook API calls.
+**Indexes:**
+- `idx_persons_facebook_id` — unique partial: WHERE `facebook_id IS NOT NULL`
+- `idx_persons_country_code` on `country_code`
+- `idx_persons_is_root` — partial: WHERE `is_root = 1`
 
 ---
 
-## 4. FastAPI Routes
+### Table: `relationships`
 
-### 4.1 Auth Router (`/auth`)
+Convention: for `parent_child`, `person_a` is ALWAYS the parent, `person_b` is ALWAYS the child. Enforced in app code.
 
-| Method | Path | Auth | Purpose | Request | Response |
-|--------|------|------|---------|---------|----------|
-| `GET` | `/auth/login` | None | Redirect to Facebook OAuth | — | `302 → Facebook` |
-| `GET` | `/auth/callback` | None | Handle OAuth callback | `?code=&state=` | `302 → /tree` (set cookie) |
-| `POST` | `/auth/logout` | User | Clear session | — | `302 → /` |
-| `GET` | `/auth/me` | User | Current user info | — | `PersonSummary` |
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | TEXT | PRIMARY KEY | UUID v4 |
+| `person_a_id` | TEXT | NOT NULL, FK → persons.id ON DELETE CASCADE | |
+| `person_b_id` | TEXT | NOT NULL, FK → persons.id ON DELETE CASCADE | |
+| `type` | TEXT | NOT NULL, CHECK IN ('parent_child','spouse','sibling','ex_spouse') | |
+| `start_date` | TEXT | nullable | Marriage date, birth date |
+| `end_date` | TEXT | nullable | Divorce date |
+| `status` | TEXT | NOT NULL DEFAULT 'active', CHECK IN ('active','dissolved') | |
+| `created_at` | TEXT | NOT NULL DEFAULT datetime('now') | |
 
-**`GET /auth/login` detail:**
-- Generate `state = secrets.token_hex(32)`
-- Set `oauth_state` cookie (10 min, HttpOnly, Secure, SameSite=Lax)
-- 302 redirect to `https://www.facebook.com/v19.0/dialog/oauth?client_id=...&redirect_uri=...&scope=public_profile,email&state=...`
+**Constraints:** `UNIQUE(person_a_id, person_b_id, type)`, `CHECK(person_a_id != person_b_id)`
 
-**`GET /auth/callback` detail:**
-- Validate `state` matches `oauth_state` cookie → 400 if mismatch
-- Exchange `code` for token → exchange for long-lived token
-- Fetch profile via Graph API
-- Download profile photo to `/data/photos/{person_id}.jpg`
-- Upsert person (see matching logic in §3.6)
-- Encrypt + store token
-- Create session (UUID in `sessions` table, 30-day expiry)
-- Set `session` cookie (HttpOnly, Secure, SameSite=Lax, 30 days)
-- 302 redirect to `/tree`
-- On any error: 302 redirect to `/?error=auth_failed`
-
-**`POST /auth/logout` detail:**
-- Mark session as `revoked=1` in DB
-- Delete `session` cookie
-- 302 redirect to `/`
-
-### 4.2 Persons Router (`/api/persons`)
-
-| Method | Path | Auth | Purpose | Request Body | Response |
-|--------|------|------|---------|-------------|----------|
-| `GET` | `/api/persons` | User | List all persons | — | `[PersonSummary]` |
-| `GET` | `/api/persons/{id}` | User | Get person detail | — | `PersonDetail` |
-| `POST` | `/api/persons` | Admin | Create person | `PersonCreate` | `PersonDetail` |
-| `PUT` | `/api/persons/{id}` | Admin | Update person | `PersonUpdate` | `PersonDetail` |
-| `DELETE` | `/api/persons/{id}` | Admin | Delete person + cascade | — | `204` |
-| `POST` | `/api/persons/{id}/photo` | Admin | Upload photo | `multipart/form-data` | `{ photo_url }` |
-
-**Pydantic schemas:**
-
-```python
-class PersonSummary(BaseModel):
-    """Minimal data for tree rendering and lists."""
-    id: str
-    first_name: str
-    last_name: str
-    nickname: str | None
-    photo_url: str | None
-    country_code: str | None
-    branch: str | None
-    is_memorial: bool              # computed: death_date is not None
-
-class PersonDetail(PersonSummary):
-    """Full person data."""
-    patronymic: str | None
-    birth_last_name: str | None
-    gender: str | None
-    birth_date: str | None         # "March 15" format (no year) for non-admins
-    death_date: str | None
-    location: str | None
-    languages: list[str]
-    bio: str | None
-    contact_whatsapp: str | None
-    contact_telegram: str | None
-    contact_signal: str | None
-    contact_email: str | None
-    is_admin: bool
-    manually_added: bool
-    relationships: list[RelationshipSummary]
-    created_at: str
-    updated_at: str
-
-class PersonCreate(BaseModel):
-    first_name: str                # Required
-    last_name: str                 # Required
-    nickname: str | None = None
-    gender: str | None = None      # "male", "female", or None
-    birth_date: str | None = None  # YYYY-MM-DD
-    death_date: str | None = None  # YYYY-MM-DD
-    location: str | None = None
-    country_code: str | None = None  # Validated: 2-letter ISO 3166-1
-    languages: list[str] = []
-    bio: str | None = None
-    branch: str | None = None      # "martin", "semesock", "maternal"
-    contact_whatsapp: str | None = None
-    contact_telegram: str | None = None
-    contact_signal: str | None = None
-    contact_email: str | None = None
-
-class PersonUpdate(BaseModel):
-    """All fields optional — partial update via PATCH semantics on PUT."""
-    first_name: str | None = None
-    last_name: str | None = None
-    # ... same fields as PersonCreate, all Optional
-```
-
-**Photo upload (`POST /api/persons/{id}/photo`):**
-- Accepts `multipart/form-data` with a single file field
-- Validates: file is JPEG or PNG, size ≤ 10MB
-- Saves to `/data/photos/{person_id}.{ext}`
-- Updates `persons.photo_url` to relative path
-- Returns `{ photo_url: "/photos/{person_id}.jpg" }`
-
-### 4.3 Relationships Router (`/api/relationships`)
-
-| Method | Path | Auth | Purpose | Request Body | Response |
-|--------|------|------|---------|-------------|----------|
-| `GET` | `/api/relationships` | User | List all | — | `[RelationshipDetail]` |
-| `POST` | `/api/relationships` | Admin | Create | `RelationshipCreate` | `RelationshipDetail` |
-| `PUT` | `/api/relationships/{id}` | Admin | Update | `RelationshipUpdate` | `RelationshipDetail` |
-| `DELETE` | `/api/relationships/{id}` | Admin | Delete | — | `204` |
-
-```python
-class RelationshipCreate(BaseModel):
-    person_a_id: str               # For parent_child: this is the PARENT
-    person_b_id: str               # For parent_child: this is the CHILD
-    relationship_type: Literal["parent_child", "spouse", "sibling", "ex_spouse"]
-    start_date: str | None = None
-    end_date: str | None = None
-    status: Literal["active", "dissolved"] = "active"
-
-class RelationshipDetail(BaseModel):
-    id: str
-    person_a: PersonSummary
-    person_b: PersonSummary
-    relationship_type: str
-    start_date: str | None
-    end_date: str | None
-    status: str
-```
-
-**Validation rules (enforced in handler):**
-- `person_a_id != person_b_id` → 400
-- Both person IDs must exist → 404
-- No duplicate `(person_a_id, person_b_id, relationship_type)` → 409
-- For non-directional types (`spouse`, `sibling`, `ex_spouse`): normalize so `person_a_id < person_b_id` lexicographically
-- `parent_child` cycle detection: BFS walk from `person_a_id` upward — if `person_b_id` is found as an ancestor, reject → 400 "Would create ancestry cycle"
-
-### 4.4 Tree Router (`/api/tree`)
-
-| Method | Path | Auth | Purpose | Response |
-|--------|------|------|---------|----------|
-| `GET` | `/api/tree` | User | Full tree data for D3 | `TreeData` |
-| `GET` | `/api/tree/relationship/{from_id}/{to_id}` | User | Relationship label between two persons | `{ label, path }` |
-
-**`TreeData` response schema:**
-
-```python
-class TreeNode(BaseModel):
-    id: str
-    first_name: str
-    last_name: str
-    nickname: str | None
-    photo_url: str | None
-    country_code: str | None
-    branch: str | None
-    is_memorial: bool
-    gender: str | None
-
-class TreeEdge(BaseModel):
-    source: str                   # person ID
-    target: str                   # person ID
-    relationship_type: str        # parent_child, spouse, sibling, ex_spouse
-    status: str                   # active, dissolved
-
-class TreeData(BaseModel):
-    nodes: list[TreeNode]
-    edges: list[TreeEdge]
-    root_id: str | None           # Luna placeholder's ID (center of tree)
-    persons: dict[str, PersonDetail]  # Flat map for card rendering without extra API calls
-```
-
-The frontend receives flat nodes + edges and converts them into a D3-renderable hierarchy client-side. The `persons` map provides full detail for person cards without additional API calls.
-
-### 4.5 Page Routes (server-rendered HTML via Jinja2)
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| `GET` | `/` | None | Landing page (`landing.html`) |
-| `GET` | `/tree` | User | Tree view (`tree.html`) — redirects to `/` if not authenticated |
-| `GET` | `/person/{id}` | User | Person detail (`person.html`) |
-| `GET` | `/admin` | Admin | Admin panel (`admin.html`) |
-
-Templates are server-rendered shells. Data is fetched client-side via `fetch()` from `/api/*` endpoints.
-
-### 4.6 Health Router
-
-| Method | Path | Auth | Response |
-|--------|------|------|----------|
-| `GET` | `/health` | None | `{ status, db, version }` |
-
-```python
-@router.get("/health")
-async def health(db: AsyncSession = Depends(get_db)):
-    try:
-        await db.execute(text("SELECT 1"))
-        return {"status": "ok", "db": "ok", "version": "1.0.0"}
-    except Exception:
-        return JSONResponse(status_code=503, content={"status": "error", "db": "unreachable"})
-```
+**Indexes:** `idx_rel_person_a` on `person_a_id`, `idx_rel_person_b` on `person_b_id`
 
 ---
 
-## 5. Tree Visualization
+### Table: `sessions`
 
-### 5.1 Library: D3.js v7
+Server-side sessions — no JWTs. Cookie stores the session token, row lives in DB.
 
-**Self-hosted** in `static/js/vendor/d3.v7.min.js` — no CDN, no third-party requests (per spec: "No analytics. No tracking. No third-party scripts.").
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | TEXT | PRIMARY KEY | 32-byte hex: `secrets.token_hex(32)` |
+| `person_id` | TEXT | NOT NULL, FK → persons.id ON DELETE CASCADE | |
+| `created_at` | TEXT | NOT NULL DEFAULT datetime('now') | |
+| `expires_at` | TEXT | NOT NULL | now + 30 days |
+| `user_agent` | TEXT | nullable | |
 
-**Why D3:**
-- Spec says "D3.js or similar"
-- Native tree layouts (`d3.tree()` / Reingold-Tilford)
-- SVG-based — each node is a DOM element (tappable, accessible)
-- Built-in zoom/pan (`d3.zoom()`)
-- No framework dependency, no build step
-- ~280KB gzipped (single file)
-
-### 5.2 The Spouse Problem
-
-D3's `d3.tree()` expects a strict hierarchy (one parent per node). Family trees aren't trees — spouses create horizontal connections.
-
-**Solution: Couple-node pattern**
-
-1. Build a strict hierarchy from `parent_child` relationships rooted at the root person
-2. For each married pair, create a virtual "couple node" at the hierarchy level
-3. Both spouses render side-by-side at the couple node's position
-4. Children connect to the couple node (which is invisible)
-5. Spouse connector drawn as a horizontal line between the two spouse nodes
-
-```
-                  [invisible couple node]
-                   /                    \
-      [Tyler] ═══════════ [Yuliya]       (═══ = spouse connector)
-                    |
-              [Our Family]
-```
-
-### 5.3 Rendering Layers
-
-```
-Layer 1: SVG background connection lines (parent→child edges)
-Layer 2: Spouse connector lines (horizontal, double-line or dashed for ex_spouse)
-Layer 3: Person nodes (circles with photos)
-Layer 4: Name labels (text below nodes)
-```
-
-### 5.4 Node Rendering
-
-Each person = SVG `<g>` group:
-
-```svg
-<g class="person-node" data-id="{id}" data-branch="{branch}" transform="translate(x, y)">
-  <!-- Invisible hit area (larger than visible node for easy tapping) -->
-  <circle r="40" fill="transparent" class="hit-area" />
-
-  <!-- Photo circle with clip path -->
-  <clipPath id="clip-{id}">
-    <circle r="30" />
-  </clipPath>
-  <image href="{photo_url}" width="60" height="60" x="-30" y="-30"
-         clip-path="url(#clip-{id})" />
-
-  <!-- Fallback: colored circle + initials (when no photo) -->
-  <circle r="30" fill="var(--branch-color)" class="avatar-fallback" />
-  <text class="initials" text-anchor="middle" dy="0.35em">TM</text>
-
-  <!-- Memorial ring (dashed border for deceased persons) -->
-  <circle r="32" fill="none" stroke="#666" stroke-dasharray="4,4"
-          class="memorial-ring" style="display: none" />
-
-  <!-- Name label -->
-  <text y="45" text-anchor="middle" class="person-name">{first_name}</text>
-
-  <!-- Country flag emoji -->
-  <text y="60" text-anchor="middle" class="person-flag">🇨🇦</text>
-</g>
-```
-
-### 5.5 Branch Colors
-
-| Branch | Color | CSS Variable | Assignment |
-|--------|-------|-------------|------------|
-| Martin (paternal) | `#4A90D9` blue | `--branch-martin` | Tyler's ancestors + siblings |
-| Semesock (maternal-paternal) | `#6BBF6B` green | `--branch-semesock` | Tyler's mother's family |
-| Maternal (Yuliya's family) | `#D94A4A` red | `--branch-maternal` | Yuliya's ancestors + siblings |
-| Shared (Luna, future siblings) | `#9B59B6` purple | `--branch-shared` | Direct descendants of Tyler+Yuliya |
-
-Branch is stored on `persons.branch`, set by admin. Untagged persons inherit from closest parent.
-
-### 5.6 Interaction Model
-
-| Interaction | Desktop | Mobile | Result |
-|-------------|---------|--------|--------|
-| Select person | Click node | Tap node | Open person card overlay |
-| Pan | Click + drag background | Touch drag | Move viewport |
-| Zoom | Scroll wheel | Pinch | Zoom in/out (0.3x – 3x) |
-| Expand/collapse | Click +/- toggle | Tap +/- toggle | Show/hide children subtree |
-| Center on person | Double-click | Double-tap | Smooth pan+zoom to center |
-| View full profile | Click name label | Tap name label | Navigate to `/person/{id}` |
-
-**D3 zoom config:**
-```javascript
-const zoom = d3.zoom()
-    .scaleExtent([0.3, 3])
-    .on("zoom", (event) => {
-        svgGroup.attr("transform", event.transform);
-    });
-svg.call(zoom);
-```
-
-**Expand/collapse:** Nodes store `_children` (hidden) vs `children` (visible). Clicking the toggle swaps them and re-renders with 300ms transition (`d3.transition().duration(300)`).
-
-### 5.7 Initial View
-
-- Tree centered on root node
-- Two generations visible by default (parents + grandparents)
-- Great-grandparents collapsed but expandable
-- Auto-fit: compute `initialScale = Math.min(viewportWidth / treeWidth, viewportHeight / treeHeight, 1)` and center
-- Animated entry: nodes fade in from center outward over 500ms
-
-### 5.8 Performance
-
-- Max ~200 nodes for a family tree — no virtualization needed
-- SVG preferred over Canvas (DOM nodes = accessible, tappable)
-- Lazy-load photos: start with colored circle + initials, load `<image>` when node is visible
-- Debounce zoom/pan to `requestAnimationFrame`
-
-### 5.9 Tree Construction Flow (client-side)
-
-```
-1. fetch('/api/tree') → { nodes, edges, root_id, persons }
-2. Build adjacency from edges
-3. BFS from root_id following parent_child edges → build hierarchy
-4. Identify spouse pairs from spouse edges → create couple nodes
-5. d3.hierarchy(root) → d3.tree().nodeSize([100, 160])(hierarchy)
-6. Render edges: d3.linkVertical() for parent→child
-7. Render spouse connectors: horizontal lines between paired nodes
-8. Render nodes: circles + photos + labels
-9. Attach zoom + click handlers
-10. Auto-fit viewport
-```
+**Indexes:** `idx_sessions_person_id`, `idx_sessions_expires_at`
 
 ---
 
-## 6. Person Card Component
+### Table: `imported_assets`
 
-### 6.1 Compact Card (Tree Overlay)
+Phase 1: stores raw FB OAuth profile JSON per login. Phase 2 adds photo, post, friends_list.
 
-Used as a slide-up bottom sheet (mobile) or side panel (tablet+) when tapping a tree node.
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | TEXT | PRIMARY KEY | UUID v4 |
+| `person_id` | TEXT | NOT NULL, FK → persons.id ON DELETE CASCADE | |
+| `source` | TEXT | NOT NULL, CHECK IN ('facebook_oauth') | |
+| `asset_type` | TEXT | NOT NULL, CHECK IN ('profile_info') | |
+| `raw_data` | TEXT | NOT NULL | JSON blob |
+| `imported_at` | TEXT | NOT NULL DEFAULT datetime('now') | |
 
-```html
-<div id="person-card-overlay" class="person-card person-card--compact" hidden
-     role="dialog" aria-label="Person details">
-  <button class="person-card__close" aria-label="Close">&times;</button>
-
-  <div class="person-card__header">
-    <div class="person-card__photo-wrap">
-      <img class="person-card__photo" src="" alt="" loading="lazy" />
-      <span class="person-card__flag" aria-label="Country"></span>
-    </div>
-    <div class="person-card__identity">
-      <h2 class="person-card__name"></h2>
-      <p class="person-card__nickname"></p>
-      <p class="person-card__relationship"></p>   <!-- "Uncle", "Бабушка" -->
-      <p class="person-card__location"></p>
-    </div>
-  </div>
-
-  <a class="person-card__detail-link" href="">View full profile →</a>
-</div>
-```
-
-### 6.2 Full Card (`/person/{id}` page)
-
-```html
-<article class="person-card person-card--full">
-  <!-- Memorial banner -->
-  <div class="person-card__memorial-banner" hidden>In Loving Memory</div>
-
-  <!-- Header -->
-  <header class="person-card__header">
-    <div class="person-card__photo-wrap person-card__photo-wrap--large">
-      <img class="person-card__photo" src="" alt="" />
-      <span class="person-card__flag"></span>
-    </div>
-    <h1 class="person-card__name"></h1>
-    <p class="person-card__nickname"></p>
-    <p class="person-card__birth-name"></p>         <!-- née / maiden name -->
-    <p class="person-card__relationship"></p>
-  </header>
-
-  <!-- Bio -->
-  <section class="person-card__bio" hidden>
-    <p></p>
-  </section>
-
-  <!-- Details -->
-  <section class="person-card__details">
-    <dl class="person-card__detail-list">
-      <div class="person-card__detail-item">
-        <dt>Birthday</dt>
-        <dd class="person-card__birthday"></dd>     <!-- "March 15" — no year -->
-      </div>
-      <div class="person-card__detail-item">
-        <dt>Location</dt>
-        <dd class="person-card__location-full"></dd>
-      </div>
-      <div class="person-card__detail-item">
-        <dt>Languages</dt>
-        <dd class="person-card__languages"></dd>
-      </div>
-    </dl>
-  </section>
-
-  <!-- Contact buttons -->
-  <section class="person-card__contacts" hidden>
-    <h2>Contact</h2>
-    <div class="person-card__contact-buttons">
-      <a class="person-card__contact-btn person-card__contact-btn--whatsapp"
-         href="" target="_blank" rel="noopener" hidden>WhatsApp</a>
-      <a class="person-card__contact-btn person-card__contact-btn--telegram"
-         href="" target="_blank" rel="noopener" hidden>Telegram</a>
-      <a class="person-card__contact-btn person-card__contact-btn--signal"
-         href="" target="_blank" rel="noopener" hidden>Signal</a>
-      <a class="person-card__contact-btn person-card__contact-btn--email"
-         href="" hidden>Email</a>
-    </div>
-  </section>
-
-  <!-- Family connections -->
-  <section class="person-card__family">
-    <h2>Family</h2>
-    <ul class="person-card__family-list">
-      <!-- JS populates: <li><a href="/person/{id}"><img /> Tyler (Father)</a></li> -->
-    </ul>
-  </section>
-
-  <!-- Metadata -->
-  <footer class="person-card__meta">
-    <p>Last updated: <time datetime=""></time></p>
-  </footer>
-</article>
-```
-
-### 6.3 Data Binding (`person-card.js`)
-
-```javascript
-class PersonCard {
-    constructor(containerEl) {
-        this.el = containerEl;
-    }
-
-    render(person) {
-        // Photo with fallback
-        const img = this.el.querySelector('.person-card__photo');
-        img.src = person.photo_url || '/static/img/placeholder.svg';
-        img.alt = `${person.first_name} ${person.last_name}`;
-
-        // Name (include nickname if present)
-        const nameEl = this.el.querySelector('.person-card__name');
-        nameEl.textContent = person.nickname
-            ? `${person.first_name} "${person.nickname}" ${person.last_name}`
-            : `${person.first_name} ${person.last_name}`;
-
-        // Country flag (ISO alpha-2 → emoji)
-        if (person.country_code) {
-            this.el.querySelector('.person-card__flag').textContent =
-                countryCodeToEmoji(person.country_code);
-        }
-
-        // Birthday — "March 15" without year (privacy)
-        if (person.birth_date) {
-            const d = new Date(person.birth_date + 'T00:00:00');
-            this.el.querySelector('.person-card__birthday').textContent =
-                d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
-        }
-
-        // Contact buttons — show only if value exists
-        this.bindContact('whatsapp', person.contact_whatsapp,
-            (n) => `https://wa.me/${n.replace(/[^0-9]/g, '')}`);
-        this.bindContact('telegram', person.contact_telegram,
-            (u) => `https://t.me/${u}`);
-        this.bindContact('signal', person.contact_signal,
-            (n) => `https://signal.me/#p/${n}`);
-        this.bindContact('email', person.contact_email,
-            (e) => `mailto:${e}`);
-
-        // Memorial state
-        if (person.death_date) {
-            this.el.classList.add('person-card--memorial');
-        }
-    }
-
-    bindContact(type, value, hrefFn) {
-        const btn = this.el.querySelector(`.person-card__contact-btn--${type}`);
-        if (!btn) return;
-        if (value) {
-            btn.href = hrefFn(value);
-            btn.removeAttribute('hidden');
-        } else {
-            btn.setAttribute('hidden', '');
-        }
-    }
-}
-
-function countryCodeToEmoji(code) {
-    return [...code.toUpperCase()]
-        .map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65))
-        .join('');
-}
-```
-
-### 6.4 Admin Controls on Card
-
-If `current_user.is_admin`, the person card shows additional buttons:
-
-- **Edit** → inline form fields replace text (save = `PUT /api/persons/{id}`)
-- **Delete** → confirmation dialog → `DELETE /api/persons/{id}`
-- **Add Relationship** → dropdown: select existing person + type (parent_child/spouse/sibling) → `POST /api/relationships`
-- **Upload Photo** → file picker → `POST /api/persons/{id}/photo`
+**Index:** `idx_assets_person_id` on `person_id`
 
 ---
 
-## 7. Mobile-First CSS Strategy
+### SQLite Startup Pragmas
 
-### 7.1 Principles
+Run via SQLAlchemy `@event.listens_for(engine.sync_engine, "connect")` on every new connection:
 
-- **Mobile-first:** All base styles target phones (320px+). Larger screens add via `min-width` queries.
-- **Single file** (`static/css/style.css`) — no preprocessor, no build step.
-- **CSS custom properties** for theming and branch colors.
-- **No framework.** The app has 2 views — vanilla CSS with flexbox is sufficient.
-- **System font stack** — handles Latin + Cyrillic + CJK natively. No web fonts to load.
-
-### 7.2 Breakpoints
-
-```css
-/* Base: 320px+ (phones) — all core styles written here */
-
-@media (min-width: 768px)  { /* Tablet (landscape iPad) */ }
-@media (min-width: 1024px) { /* Desktop */ }
-@media (min-width: 1440px) { /* Large desktop — tree gets extra room */ }
-```
-
-Only 3 breakpoints. Content-first — if the layout works, don't add a breakpoint.
-
-### 7.3 Viewport Handling
-
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-```
-
-```css
-/* Safe area insets for notched devices (iPhone) */
-body {
-    padding: env(safe-area-inset-top) env(safe-area-inset-right)
-             env(safe-area-inset-bottom) env(safe-area-inset-left);
-}
-
-/* Tree container fills viewport minus nav */
-.tree-container {
-    width: 100%;
-    height: calc(100dvh - var(--nav-height));   /* dvh = dynamic viewport height (mobile) */
-    overflow: hidden;
-    touch-action: none;                          /* D3 handles all touch events */
-    overscroll-behavior: none;                   /* Prevent pull-to-refresh on iOS */
-}
-
-/* Prevent iOS zoom on input focus */
-input, select, textarea {
-    font-size: 16px;
-}
-```
-
-### 7.4 Touch Targets
-
-Per WCAG 2.2 / Apple HIG — minimum 44×44px:
-
-```css
-.person-card__contact-btn,
-.person-node .hit-area,
-button, a {
-    min-height: 44px;
-    min-width: 44px;
-}
-
-.person-card__contact-btn {
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 16px;
-}
-
-.person-card__contact-buttons {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-```
-
-### 7.5 CSS Custom Properties
-
-```css
-:root {
-    /* Branch colors */
-    --branch-martin: #4A90D9;
-    --branch-semesock: #6BBF6B;
-    --branch-maternal: #D94A4A;
-    --branch-shared: #9B59B6;
-
-    /* UI colors */
-    --color-bg: #FAFAFA;
-    --color-surface: #FFFFFF;
-    --color-text: #1A1A1A;
-    --color-text-muted: #666666;
-    --color-border: #E0E0E0;
-    --color-primary: #4A90D9;
-
-    /* Spacing (4px base) */
-    --space-xs: 4px;
-    --space-sm: 8px;
-    --space-md: 16px;
-    --space-lg: 24px;
-    --space-xl: 40px;
-
-    /* Typography */
-    --font-family: system-ui, -apple-system, BlinkMacSystemFont,
-                   'Segoe UI', Roboto, sans-serif;
-    --font-size-sm: 14px;
-    --font-size-base: 16px;
-    --font-size-lg: 20px;
-    --font-size-xl: 28px;
-    --line-height: 1.5;
-
-    /* Layout */
-    --nav-height: 56px;
-    --card-radius: 12px;
-    --max-content-width: 640px;
-}
-```
-
-### 7.6 Person Card Responsive Behavior
-
-```css
-/* Mobile: bottom sheet */
-.person-card--compact {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    max-height: 50vh;
-    border-radius: var(--card-radius) var(--card-radius) 0 0;
-    background: var(--color-surface);
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-    overflow-y: auto;
-    padding: var(--space-lg);
-    transform: translateY(100%);
-    transition: transform 300ms ease-out;
-}
-.person-card--compact[data-visible="true"] {
-    transform: translateY(0);
-}
-
-/* Tablet+: side panel */
-@media (min-width: 768px) {
-    .person-card--compact {
-        position: fixed;
-        top: var(--nav-height); right: 0; bottom: 0;
-        left: auto;
-        width: 360px;
-        max-height: none;
-        border-radius: 0;
-        transform: translateX(100%);
-    }
-    .person-card--compact[data-visible="true"] {
-        transform: translateX(0);
-    }
-}
-```
-
-### 7.7 Layout Strategy Per View
-
-| View | Mobile | Tablet+ |
-|------|--------|---------|
-| Landing | Single column, centered, max-width 480px | Same, larger type |
-| Tree | Full-viewport SVG, floating zoom controls bottom-right, person card as bottom sheet | Full-viewport SVG, person card as right sidebar (360px) |
-| Person detail | Single column, max-width 640px, photo full-bleed on mobile | Same, centered |
-| Admin | Single column forms, horizontal-scroll tables on mobile | Two-column layout |
+1. `PRAGMA journal_mode=WAL` — better concurrent reads, safer crash recovery
+2. `PRAGMA foreign_keys=ON` — SQLite disables FK enforcement by default; enables cascade deletes
+3. `PRAGMA synchronous=NORMAL` — acceptable durability for this use case
 
 ---
 
-## 8. Railway Deployment
+### Seed File Format (`data/family_tree.json`)
 
-### 8.1 Dockerfile
+Pre-generate all UUIDs once, hardcode them, never regenerate. Format:
 
-```dockerfile
-# Stage 1: Build
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-RUN pip install --no-cache-dir uv
-COPY pyproject.toml .
-RUN uv pip install --system --no-cache -r pyproject.toml
-
-# Stage 2: Runtime
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Copy installed packages
-COPY --from=builder /usr/local/lib/python3.12/site-packages \
-                    /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Copy application
-COPY . .
-
-# Create persistent data directory
-RUN mkdir -p /data/photos
-
-# Non-root user
-RUN useradd --create-home appuser && chown -R appuser:appuser /app /data
-USER appuser
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-
-EXPOSE 8000
-
-# Run migrations then start server (single worker — SQLite doesn't handle concurrent writes)
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
 ```
-
-**Why `--workers 1`:** SQLite cannot handle concurrent writes from multiple processes. Single worker + async I/O handles the load for a family-sized user base (<50 concurrent users).
-
-### 8.2 Environment Variables
-
-| Variable | Required | Example | Purpose |
-|----------|----------|---------|---------|
-| `FACEBOOK_APP_ID` | Yes | `123456789` | OAuth app ID |
-| `FACEBOOK_APP_SECRET` | Yes | `abc123...` | OAuth app secret |
-| `FACEBOOK_REDIRECT_URI` | Yes | `https://family.martin.fm/auth/callback` | OAuth callback |
-| `SESSION_SECRET` | Yes | (64-char hex) | Session cookie signing |
-| `ENCRYPTION_KEY` | Yes | (Fernet key) | Token encryption |
-| `DATABASE_URL` | No | `sqlite+aiosqlite:///data/family.db` | Default: `/data/family.db` |
-| `ALLOWED_ORIGINS` | No | `https://family.martin.fm` | CORS (comma-separated) |
-| `ADMIN_FACEBOOK_IDS` | Yes | `10001234,10005678` | Facebook IDs auto-promoted to admin |
-| `ROOT_PERSON_ID` | No | (UUID) | Tree root person. Set after first seed. |
-| `DEBUG` | No | `false` | `true` = dev mode (insecure cookies, verbose errors) |
-| `PORT` | No | `8000` | Railway sets this automatically |
-
-**Generate secrets:**
-```bash
-# SESSION_SECRET
-python -c "import secrets; print(secrets.token_hex(32))"
-
-# ENCRYPTION_KEY
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-### 8.3 Railway Volume
-
-**Critical:** SQLite database must live on a persistent volume, not in the app directory (rebuilt on every deploy).
-
-- Mount path: `/data`
-- Size: 1 GB (sufficient for family tree + photos)
-- Contents: `family.db`, `photos/`
-
-Configure in Railway dashboard → Service → Volumes → Add Volume.
-
-### 8.4 Health Check
-
-Configure in Railway dashboard:
-- Path: `/health`
-- Interval: 30s
-- Start period: 10s (allows for migration run)
-
-### 8.5 Domain Setup
-
-1. Add custom domain in Railway dashboard (e.g., `family.martin.fm`)
-2. Create CNAME record → Railway-provided hostname
-3. Railway auto-provisions TLS via Let's Encrypt
-4. Update `FACEBOOK_REDIRECT_URI` env var
-5. Update Facebook App's Valid OAuth Redirect URIs
-
-### 8.6 `pyproject.toml`
-
-```toml
-[project]
-name = "family-book"
-version = "1.0.0"
-requires-python = ">=3.12"
-dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.30",
-    "sqlalchemy[asyncio]>=2.0",
-    "aiosqlite>=0.20",
-    "alembic>=1.13",
-    "pydantic>=2.9",
-    "pydantic-settings>=2.5",
-    "cryptography>=43",             # Fernet encryption for tokens
-    "httpx>=0.27",                  # Async HTTP for Facebook API
-    "jinja2>=3.1",                  # HTML templates
-    "python-multipart>=0.0.9",      # File uploads
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8",
-    "pytest-asyncio>=0.24",
-    "httpx>=0.27",                  # TestClient
-    "ruff>=0.6",
-]
-```
-
----
-
-## 9. Gotchas & Edge Cases
-
-### Facebook OAuth
-
-| # | Issue | Impact | Mitigation |
-|---|-------|--------|-----------|
-| 1 | `user_friends` only returns friends who also use your app | Friends list starts empty for first user | Expected. As more family connects, mutual friends populate. Don't depend on this for Phase 1. |
-| 2 | `user_photos` and `user_friends` require Meta App Review | Can't go "Live" without review | Keep app in Development Mode. Add family as Testers (up to 2000). Sufficient for Phase 1. |
-| 3 | Facebook profile photo URLs expire (CDN URLs, hours-lived) | Broken images if stored as-is | Download photo on login, save to `/data/photos/{person_id}.jpg`. Never link to `fbcdn.net`. |
-| 4 | OAuth `state` race condition (two tabs, one cookie) | Second tab overwrites first tab's state | Accept this. First tab's callback fails → user retries. Not worth solving. |
-| 5 | Facebook App Development Mode | Only roles (admin/dev/tester) can log in | Add each family member as Tester before sending them the invite link. |
-| 6 | Graph API version deprecation | `v19.0` will eventually be removed | Pin to `v19.0`. Check for deprecation warnings in response headers. Update in ~2 years. |
-
-### SQLite
-
-| # | Issue | Impact | Mitigation |
-|---|-------|--------|-----------|
-| 7 | WAL mode not enabled by default | Poor read concurrency | Set `PRAGMA journal_mode=WAL` on every connection via event listener. |
-| 8 | Foreign keys OFF by default | Cascade deletes don't work | Set `PRAGMA foreign_keys=ON` on every connection. |
-| 9 | Railway volume persistence | Data lost if volume not configured | Verify after first deploy: create a person, redeploy, confirm person still exists. |
-| 10 | Concurrent writes timeout | Two simultaneous writes → one waits | `PRAGMA busy_timeout=5000` (5s wait). If timeout, return 503. Acceptable for <50 users. |
-| 11 | Database file corruption on crash | Data loss | WAL mode is crash-safe. Additionally: nightly backup (Phase 2, cron to R2). |
-
-### Tree Visualization
-
-| # | Issue | Impact | Mitigation |
-|---|-------|--------|-----------|
-| 12 | Spouses don't fit D3's tree hierarchy | Layout breaks | Couple-node pattern (§5.2). Virtual invisible node, spouses rendered side-by-side. |
-| 13 | Disconnected persons (no relationships yet) | Orphan nodes float | Show disconnected persons in a separate "Unconnected" section below the tree. Admin CTA: "Connect this person." |
-| 14 | Single-parent branches | Missing parent position | D3 handles single-child hierarchies. If only one parent exists, that parent is the only node at that level. No phantom second parent. |
-| 15 | Wide generation (6+ siblings) | Overflows mobile viewport | Initial auto-fit zoom handles this. Pan/zoom to navigate. |
-| 16 | SVG `<image>` photo loading | 50+ images = jank | Lazy-load: start with circle + initials, replace with photo when node enters viewport (IntersectionObserver or distance check). |
-| 17 | Mobile Safari SVG tap events | Click events sometimes ignored on SVG `<g>` | Set `pointer-events: all` on SVG groups. |
-
-### Person Data
-
-| # | Issue | Impact | Mitigation |
-|---|-------|--------|-----------|
-| 18 | Child's name must never appear in UI | Privacy violation | Root person's `first_name` = "Our", `last_name` = "Family" in DB. API response always returns "Our Family" for root. |
-| 19 | Country code → flag emoji | May not render on some systems | Works on iOS, Android, Win 10+, macOS. Fallback: display 2-letter code. |
-| 20 | Birth year privacy | Revealing age | Display as "March 15" (no year) for non-admin users. Admin sees full date. |
-| 21 | Duplicate person on OAuth | Same person exists manually + logs in via Facebook | Match by: (1) `facebook_id`, (2) email, (3) flag name match for admin review. Never auto-merge on name alone — recycled names in families. |
-| 22 | Gender for relationship labels | "Father" vs "Mother" requires gender | `gender` column, nullable. Default to gender-neutral ("Parent", "Grandparent", "Sibling") if NULL. |
-
-### Deployment
-
-| # | Issue | Impact | Mitigation |
-|---|-------|--------|-----------|
-| 23 | First deploy — empty database | Empty tree view | Show empty state: "No family members yet. Add your first." + seed script option. |
-| 24 | CORS in development | Frontend on :5173, backend on :8000 | `ALLOWED_ORIGINS` env var. In dev, set to `http://localhost:5173`. |
-| 25 | `Secure` cookies on localhost | Cookies rejected over HTTP | `DEBUG=true` → set `secure=False` on cookies. |
-| 26 | Photo storage without R2 | Disk storage won't scale | Phase 1: store in `/data/photos/` on Railway volume. Move to R2/S3 in Phase 2. |
-| 27 | Railway cold starts (free tier) | 5-10s first request after sleep | Use Pro plan ($5/mo) for always-on. Or accept cold starts for MVP. |
-| 28 | Alembic migrations on startup | Failed migration blocks deploy | CMD runs `alembic upgrade head` before uvicorn. If migration fails, container exits, Railway retries (up to 3). Check Alembic migration is idempotent. |
-
-### Seed Data
-
-**`seed.json` format** — human-friendly, names instead of UUIDs:
-
-```json
 {
   "persons": [
     {
-      "ref": "root",
+      "id": "<stable UUID>",
       "first_name": "Our",
       "last_name": "Family",
-      "branch": "shared",
-      "_note": "Root node — never displays real child name"
+      "display_name": "Our Family",
+      "is_root": true,
+      "is_admin": false,
+      "manually_added": true
     },
     {
-      "ref": "tyler",
+      "id": "<stable UUID>",
       "first_name": "Tyler",
       "last_name": "Martin",
       "gender": "male",
       "location": "Madrid, Spain",
       "country_code": "ES",
-      "languages": ["en"],
+      "branch": "martin",
       "is_admin": true,
-      "branch": "martin"
-    },
-    {
-      "ref": "yuliya",
-      "first_name": "Yuliya",
-      "last_name": "...",
-      "gender": "female",
-      "country_code": "ES",
-      "is_admin": true,
-      "branch": "maternal"
+      "manually_added": true
     }
   ],
   "relationships": [
-    { "parent": "tyler", "child": "root", "type": "parent_child" },
-    { "parent": "yuliya", "child": "root", "type": "parent_child" },
-    { "a": "tyler", "b": "yuliya", "type": "spouse" }
+    {
+      "id": "<stable UUID>",
+      "person_a_id": "<Tyler UUID>",
+      "person_b_id": "<root UUID>",
+      "type": "parent_child",
+      "status": "active"
+    }
   ]
 }
 ```
 
-The `ref` field is a human-friendly key used only for cross-referencing within the seed file. The seed script generates UUIDs and resolves refs to UUIDs during import. The script is idempotent — re-running it upserts by `ref` (stored in a `_seed_ref` column or matched by name).
+Minimum seed: root, Tyler, Yuliya, + 3-5 additional family members across Russia/Canada/Spain with correct relationships to make the tree and graph algorithm testable (include at least: one grandparent, one aunt or uncle, one first cousin).
 
 ---
 
-## 10. Implementation Order
+## Task Breakdown
 
-Execute in this sequence. Each step is independently testable.
+---
 
-1. **Repo scaffolding** — `pyproject.toml`, `.gitignore`, `.env.example`, directory structure, CLAUDE.md
-2. **Database** — `app/database.py`, `app/models.py`, Alembic migration (`001_initial_schema.py`), WAL mode, FK enforcement
-3. **Config** — `app/config.py` with pydantic-settings, all env vars
-4. **Seed script** — `app/seed.py` + `seed.json` with Tyler/Yuliya family skeleton. Run, verify data in SQLite.
-5. **Health endpoint** — `GET /health` with DB check. Deploy skeleton to Railway, verify health.
-6. **People CRUD** — `app/routers/persons.py`, `app/schemas.py`. Test with curl/httpx.
-7. **Relationships CRUD** — `app/routers/relationships.py`, validation (cycles, duplicates). Tests.
-8. **Graph engine** — `app/graph.py`: BFS, relationship labeling. Comprehensive unit tests.
-9. **Tree API** — `GET /api/tree` returning D3-compatible data. Test with seed data.
-10. **Facebook OAuth** — `app/auth.py`, `app/routers/auth.py`, session middleware, photo download. Test against Facebook sandbox.
-11. **Landing page** — `templates/landing.html`, CSS. "Connect with Facebook" button.
-12. **Tree visualization** — `templates/tree.html`, `static/js/tree.js`, D3 rendering, zoom/pan, couple nodes.
-13. **Person card** — `static/js/person-card.js`, bottom sheet / sidebar, data binding.
-14. **Admin controls** — Inline edit/delete on person cards, relationship creation. `templates/admin.html`.
-15. **Railway production deploy** — Dockerfile, volume, env vars, custom domain, Facebook redirect URI.
-16. **End-to-end test** — Full flow: landing → Facebook login → tree → tap person → card → admin edit.
+### Task 1: Project Scaffolding
+
+**Files:** `.gitignore`, `pyproject.toml`, `.env.example`, `CLAUDE.md`, `backend/__init__.py`, `backend/main.py` (skeleton), `backend/config.py`
+
+- [ ] `git init && git branch -M main`
+- [ ] Create `.gitignore`: `.env`, `data/*.db`, `data/photos/`, `__pycache__/`, `.pytest_cache/`, `*.pyc`, `.DS_Store`, `.venv/`
+- [ ] Create `pyproject.toml` with pinned deps (minor version): fastapi, uvicorn[standard], sqlalchemy, alembic, pydantic-settings, httpx, cryptography, python-multipart. Dev extras: pytest, pytest-asyncio, httpx.
+- [ ] Create `.env.example` with all vars documented: `FB_APP_ID`, `FB_APP_SECRET`, `FB_REDIRECT_URI`, `ADMIN_FB_IDS`, `FERNET_KEY`, `SESSION_SECRET`, `DATABASE_URL`
+- [ ] Create `backend/config.py`: Pydantic `Settings` class from pydantic-settings. All vars required — fail at import if missing. No hardcoded secrets anywhere.
+- [ ] Create `backend/main.py`: bare FastAPI with lifespan (startup: create `data/photos/` if missing). Mount `/static` → `frontend/`, `/photos` → `data/photos/`. Router registration stubs.
+- [ ] Write `CLAUDE.md`: stack, env var sources, local run command, test command, Railway deploy steps, SQLite path, seed command, gotchas summary.
+- [ ] Create `data/.gitkeep`
+- [ ] Install: `pip install -e ".[dev]"`. Verify: `python -c "import fastapi, sqlalchemy, httpx, cryptography"`
+- [ ] Commit: `chore: scaffold project structure`
+
+---
+
+### Task 2: Database Models + Alembic Migration
+
+**Files:** `backend/database.py`, `backend/models.py`, `alembic.ini`, `migrations/env.py`, `migrations/versions/20260315_001_initial.py`, `tests/conftest.py`, `tests/test_models.py`
+
+- [ ] Write `backend/database.py`:
+  - Async SQLAlchemy engine from `settings.DATABASE_URL`
+  - Connection event listener running all three startup pragmas on every new connection
+  - `get_db()` async generator for FastAPI DI
+  - `create_all_for_tests()` helper used only in `tests/conftest.py` (production uses Alembic)
+
+- [ ] Write `backend/models.py`: four SQLAlchemy 2.0 mapped classes using `DeclarativeBase` with type annotations: `Person`, `Relationship`, `AppSession`, `ImportedAsset`. Include `__repr__` on each. Add a Python `@property` on `Person` for `languages` that json.loads on get and json.dumps on set. Note: `updated_at` is managed by a SQLAlchemy session event (not `onupdate=func.now()`, which is unreliable with SQLite TEXT dates).
+
+- [ ] Configure Alembic: `alembic init migrations`. Edit `alembic.ini` → `script_location = migrations`. Edit `migrations/env.py` → import `Base` from `backend.models`, configure URL from env.
+
+- [ ] Generate initial migration: `alembic revision --autogenerate -m "initial_schema"`. Review the generated file carefully: all tables, columns, indexes, check constraints must be present. Manual additions often needed for partial indexes and check constraints (Alembic autogenerate misses some).
+
+- [ ] Write `tests/conftest.py`:
+  - `db` fixture: in-memory SQLite, `create_all_for_tests()`, run pragmas, yield session, rollback after each test
+  - `seeded_db` fixture: uses `db`, inserts root person + Tyler (admin) + Yuliya (admin) + one grandparent + one aunt + one first cousin with all correct relationships
+  - `client` fixture: `AsyncClient` against the FastAPI app with `get_db` dependency overridden to use `db`
+
+- [ ] Write `tests/test_models.py`:
+  - Test Person creation with minimal required fields succeeds
+  - Test `UNIQUE(person_a_id, person_b_id, type)` raises `IntegrityError` on duplicate
+  - Test `CHECK(person_a_id != person_b_id)` raises on self-relationship
+  - Test `ON DELETE CASCADE`: delete a Person, their Relationship and AppSession rows disappear
+  - Test `languages` property: store list, retrieve list (not raw JSON string)
+
+- [ ] Run: `pytest tests/test_models.py -v`
+- [ ] Commit: `feat(db): SQLAlchemy models, Alembic initial migration`
+
+---
+
+### Task 3: Seed Data + Loader
+
+**Files:** `data/family_tree.json`, `backend/seed.py`, `tests/test_seed.py`
+
+- [ ] Create `data/family_tree.json`. Include:
+  - Root (Luna placeholder): `is_root=true`, `display_name="Our Family"`, no real name
+  - Tyler: `is_admin=true`, `country_code="ES"`, `gender="male"`, `branch="martin"`
+  - Yuliya: `is_admin=true`, `country_code="ES"`, `gender="female"`, `branch="yuliya"`
+  - Relationships: Tyler → root (parent_child), Yuliya → root (parent_child), Tyler ↔ Yuliya (spouse)
+  - 3-5 more family members with `branch` set: at least one grandparent, one aunt/uncle, one first cousin
+
+- [ ] Write `backend/seed.py`:
+  - Reads `data/family_tree.json`
+  - For each person and relationship: `session.merge(Model(**row))` — upserts by PK
+  - Prints: "Seeded N persons, M relationships"
+  - `if __name__ == "__main__"`: block so `python -m backend.seed` works
+
+- [ ] Write `tests/test_seed.py`:
+  - Test idempotency: run seed twice, person count is identical both times
+  - Test exactly one `is_root=True` person exists
+  - Test Tyler and Yuliya have `is_admin=True`
+  - Test root person's `display_name` equals "Our Family" (not a real child's name)
+  - Test expected relationship count matches `family_tree.json`
+
+- [ ] Run locally: `alembic upgrade head && python -m backend.seed`
+- [ ] Run: `pytest tests/test_seed.py -v`
+- [ ] Commit: `feat(seed): family_tree.json + idempotent seed loader`
+
+---
+
+### Task 4: Graph Computation Engine (TDD — tests first)
+
+**Files:** `backend/graph.py`, `tests/test_graph.py`
+
+Write ALL tests before any implementation. This is the most critical module.
+
+- [ ] Write `tests/test_graph.py` — all tests should FAIL before implementation:
+
+  **BFS distance tests:**
+  - `test_bfs_root_is_zero`
+  - `test_bfs_parent_is_one` (Tyler → Luna = distance 1)
+  - `test_bfs_grandparent_is_two`
+  - `test_bfs_aunt_via_parent_sibling` (aunt = 3 hops: up to parent, across to sibling)
+  - `test_bfs_first_cousin` (distance 4: up, up, down, down via common grandparent)
+  - `test_bfs_unreachable_person_absent_from_result`
+
+  **Relationship label tests:**
+  - `test_label_father` (male parent of root)
+  - `test_label_mother` (female parent of root)
+  - `test_label_parent_gender_neutral` (null gender → "Parent")
+  - `test_label_grandfather`, `test_label_grandmother`
+  - `test_label_great_grandfather`
+  - `test_label_uncle`, `test_label_aunt`
+  - `test_label_sibling_brother`, `test_label_sibling_sister`
+  - `test_label_nephew`, `test_label_niece`
+  - `test_label_first_cousin`
+  - `test_label_first_cousin_once_removed_up` (person is one gen above cousin)
+  - `test_label_first_cousin_once_removed_down`
+  - `test_label_second_cousin`
+  - `test_label_spouse_husband`, `test_label_spouse_wife`
+  - `test_label_ex_spouse`
+  - `test_label_no_relation_returns_graceful_string`
+
+  **Privacy layer tests:**
+  - `test_layer_root_is_zero`
+  - `test_layer_admin_parent_is_one`
+  - `test_layer_grandparent_is_two`
+  - `test_layer_first_cousin_is_four`
+  - `test_layer_ex_spouse_is_five_regardless_of_bfs`
+  - `test_layer_marriage_graft` (spouse of Layer 2 person → Layer 3)
+  - `test_layer_privacy_override_respected`
+  - `test_layer_unreachable_is_five`
+
+- [ ] Run: `pytest tests/test_graph.py -v` — all must FAIL
+
+- [ ] Implement `backend/graph.py`:
+
+  **`build_adjacency(session) → dict[str, list[tuple[str, str]]]`**
+
+  Query all active Relationship rows. For each row, create bidirectional edges:
+  - `parent_child`: add `(child_id, "child")` to parent's list; add `(parent_id, "parent")` to child's list
+  - `spouse`: add `(b_id, "spouse")` to a's list and `(a_id, "spouse")` to b's list
+  - `ex_spouse`: symmetric with label "ex_spouse"
+  - `sibling`: symmetric with label "sibling"
+
+  **`bfs_distance(root_id, adjacency) → dict[str, int]`**
+
+  Standard BFS from root_id. Treats all edge types equally for distance. Returns dict of all reachable node IDs and their distances. Root = 0. Unreachable nodes are absent.
+
+  **`get_privacy_layer(person_id, bfs_distances, session) → int`**
+
+  Apply rules in this exact order:
+  1. Fetch `Person.privacy_override` — return it if not None
+  2. If `person_id` absent from `bfs_distances` → return 5
+  3. If person has any `ex_spouse` relationship in DB → return 5
+  4. If person has `spouse` relationship to a person at layer N → return min(N+1, 5)
+  5. Otherwise: return min(bfs_distances[person_id], 5)
+
+  **`compute_relationship_label(from_id, to_id, adjacency, persons_map) → str`**
+
+  Algorithm:
+  1. BFS from `from_id` with parent tracking to recover path to `to_id`
+  2. Walk path, counting "up" hops (direction="parent") and "down" hops (direction="child")
+  3. Check for direct `spouse` edge: return "Husband"/"Wife"/"Spouse" by gender
+  4. Check for direct `ex_spouse` edge: return "Ex-Husband"/"Ex-Wife"/"Ex-Spouse"
+  5. Apply naming table:
+
+  | (up, down) | Male | Female | Neutral |
+  |-----------|------|--------|---------|
+  | (1, 0) | Father | Mother | Parent |
+  | (0, 1) | Son | Daughter | Child |
+  | (2, 0) | Grandfather | Grandmother | Grandparent |
+  | (0, 2) | Grandson | Granddaughter | Grandchild |
+  | (3, 0) | Great-Grandfather | Great-Grandmother | Great-Grandparent |
+  | (N≥4, 0) | Prepend "Great-" to (N-1, 0) result | | |
+  | (1, 1) | Brother | Sister | Sibling |
+  | (2, 1) | Uncle | Aunt | Aunt/Uncle |
+  | (1, 2) | Nephew | Niece | Niece/Nephew |
+  | (2, 2) | — | — | First Cousin |
+  | (3, 3) | — | — | Second Cousin |
+  | (N, N) | — | — | `(N-1)th Cousin` |
+  | (N, M), N≠M | — | — | `(min(N,M)-1)th Cousin, abs(N-M) times removed` |
+
+  6. If path not found: return "No relation found"
+
+  **`build_tree_for_d3(root_id, session) → dict`**
+
+  - Build adjacency, run BFS from root
+  - For each person: compute privacy layer, compute relationship label vs. root
+  - Build hierarchical nested dict using only `parent_child` edges (BFS traversal, respecting direction: root's parents, their parents, etc. — and root's children and their descendants)
+  - Apply privacy field gating in the flat `people` map: Layer 4+ → omit contacts; Layer 5 → only id, name, country_code, relationship_label, layer
+  - Return `{"root": <hierarchy>, "people": <flat map>, "edges": [<spouse/sibling edges for custom link rendering>]}`
+
+- [ ] Run: `pytest tests/test_graph.py -v` — all must PASS
+- [ ] Commit: `feat(graph): BFS, relationship labels, privacy layers`
+
+---
+
+### Task 5: Facebook OAuth Flow
+
+**Files:** `backend/oauth.py`, `backend/auth.py`, `backend/routers/auth_routes.py`, `tests/test_oauth.py`
+
+- [ ] Write `tests/test_oauth.py` (httpx mocked throughout):
+  - `test_build_auth_url_contains_required_params` (client_id, state, redirect_uri, scope)
+  - `test_exchange_code_returns_token`
+  - `test_exchange_long_lived_token_called_after_short_lived`
+  - `test_fetch_profile_extracts_all_fields`
+  - `test_upsert_creates_new_person_on_first_login`
+  - `test_upsert_updates_existing_person_on_re_login`
+  - `test_upsert_no_duplicate_rows` (run twice with same FB ID, count stays 1)
+  - `test_upsert_sets_is_admin_for_admin_fb_id`
+  - `test_state_mismatch_raises_value_error`
+  - `test_photo_download_failure_does_not_crash_flow`
+
+- [ ] Run: `pytest tests/test_oauth.py -v` — all FAIL
+
+- [ ] Implement `backend/oauth.py`:
+
+  **`build_auth_url(state)`** — construct Facebook authorization URL:
+  - Base: `https://www.facebook.com/v21.0/dialog/oauth`
+  - Params: `client_id`, `redirect_uri`, `state`, `scope=public_profile,email`, `response_type=code`
+
+  **`exchange_code_for_token(code)`** — async POST to `https://graph.facebook.com/v21.0/oauth/access_token`. Returns short-lived token string.
+
+  **`exchange_for_long_lived_token(short_token)`** — async GET to Facebook's `fb_exchange_token` endpoint. Returns long-lived token string (60 days). Call this immediately after the short-lived exchange — store only the long-lived token.
+
+  **`fetch_facebook_profile(access_token)`** — async GET `/v21.0/me?fields=id,first_name,last_name,email,gender,picture.width(400)`. Returns dict.
+
+  **`download_profile_photo(url, person_id)`** — async GET the photo URL, write to `data/photos/{person_id}.jpg`. Return `/photos/{person_id}.jpg` as the `photo_url` value. Log a warning and return None if download fails — don't crash the OAuth flow.
+
+  **`encrypt_token(token)` / `decrypt_token(encrypted)`** — Fernet symmetric encryption. Key from `settings.FERNET_KEY`.
+
+  **`upsert_person_from_fb(profile_dict, access_token, session)`** — look up by `facebook_id`, create or update Person row, download photo, encrypt and store token, save `ImportedAsset`. Check `settings.ADMIN_FB_IDS` (comma-separated) for admin assignment. Return Person.
+
+- [ ] Implement `backend/auth.py`:
+
+  **`create_session(person_id, user_agent, session)`** — generate 32-byte hex token, insert AppSession row (expires 30 days), return token.
+
+  **`get_current_user(request, session)` (FastAPI dependency)** — read `family_book_session` cookie, look up AppSession by token, check `expires_at`, return Person or None.
+
+  **`require_auth`** — depends on `get_current_user`. Raises HTTP 302 → `/` if None.
+
+  **`require_admin`** — depends on `require_auth`. Raises HTTP 403 if `person.is_admin == False`.
+
+- [ ] Implement `backend/routers/auth_routes.py`:
+
+  **`GET /auth/login`**: generate CSRF state (`secrets.token_urlsafe(16)`), sign it into a 5-minute cookie using `itsdangerous.URLSafeTimedSerializer(settings.SESSION_SECRET)`, redirect to `build_auth_url(state)`.
+
+  **`GET /auth/callback`**: read and verify state from signed cookie (CSRF) — clear cookie on any outcome; exchange code; exchange for long-lived token; fetch profile; download photo; upsert person; create session; set `family_book_session` cookie (HTTPOnly, Secure in prod, SameSite=Lax, path=/, max-age=2592000); redirect to `/app`.
+
+  **`POST /auth/logout`**: delete AppSession row, clear `family_book_session` cookie, redirect to `/`.
+
+  **`GET /auth/me`**: return current Person as Pydantic JSON.
+
+- [ ] Run: `pytest tests/test_oauth.py -v` — all PASS
+- [ ] Manually test: `GET /auth/login` with real FB credentials → confirms redirect to Facebook dialog
+- [ ] Commit: `feat(auth): Facebook OAuth flow, session management, token encryption`
+
+---
+
+### Task 6: API Endpoints
+
+**Files:** `backend/schemas.py`, `backend/routers/people.py`, `backend/routers/relationships.py`, `backend/routers/tree.py`, `tests/test_api_people.py`, `tests/test_api_tree.py`
+
+- [ ] Write `backend/schemas.py`: Pydantic models for `PersonCreate`, `PersonUpdate`, `PersonResponse`, `RelationshipCreate`, `TreeNode`, `TreeEdge`, `TreeResponse`. `PersonResponse` fields include nullables — populate based on privacy layer in routers.
+
+- [ ] Implement `GET /api/tree` in `backend/routers/tree.py`:
+  - Requires auth
+  - Calls `graph.build_tree_for_d3(settings.ROOT_PERSON_ID, session)`
+  - Returns `TreeResponse`
+  - Add `ROOT_PERSON_ID` to `Settings` (loaded from env or derived from seed — Tyler sets this once)
+
+- [ ] Add `GET /api/health` (no auth): execute `SELECT 1` on DB, return `{"status": "ok"}`. Railway uses this.
+
+- [ ] Implement people endpoints in `backend/routers/people.py`:
+  - `GET /api/people`: list all persons, optional `?country_code=` filter. Privacy field gating by layer.
+  - `GET /api/people/{id}`: single person, 404 if not found. Same field gating.
+  - `POST /api/people` (admin): create from `PersonCreate`, return 201.
+  - `PUT /api/people/{id}` (admin): update from `PersonUpdate`, return updated.
+  - `DELETE /api/people/{id}` (admin): delete, cascade handles relationships, return 204.
+  - `POST /api/people/{id}/photo` (admin): accept `UploadFile`, save to `data/photos/{id}.jpg`, update `photo_url`.
+
+- [ ] Implement relationship endpoints in `backend/routers/relationships.py`:
+  - `GET /api/relationships` (admin): list all.
+  - `POST /api/relationships` (admin): create. Validate `person_a_id != person_b_id`. Return 409 on unique constraint violation.
+  - `DELETE /api/relationships/{id}` (admin): delete, return 204.
+
+- [ ] Write `tests/test_api_tree.py`:
+  - Unauthenticated → 302
+  - Authenticated → 200 with valid JSON shape
+  - Root node `name` field equals "Our Family" (not a real child's name) — this test is a privacy invariant
+  - Layer 5 person in nodes has no contact fields, no birth_date
+  - Layer 1 person (Tyler) has all fields
+
+- [ ] Write `tests/test_api_people.py`:
+  - `GET /api/people/{id}` unauthenticated → 302
+  - Layer 1 person response has all fields
+  - Layer 4 person response has no contact fields
+  - Non-existent ID → 404
+  - Non-admin `DELETE` → 403
+  - Admin `POST` creates person, `DELETE` removes them, 404 after deletion
+  - Duplicate relationship `POST` → 409
+
+- [ ] Run: `pytest tests/test_api_people.py tests/test_api_tree.py -v`
+- [ ] Commit: `feat(api): tree, people, relationship endpoints with auth + privacy gating`
+
+---
+
+### Task 7: Frontend Templates
+
+**Files:** `frontend/index.html`, `frontend/app.html`, `backend/main.py` (page routes)
+
+- [ ] Add page routes to `backend/main.py` (not in routers — simple `FileResponse` returns):
+  - `GET /`: if `get_current_user` returns a person → 302 to `/app`. Otherwise serve `frontend/index.html`.
+  - `GET /app`: if not authenticated → 302 to `/`. Otherwise serve `frontend/app.html`.
+
+- [ ] Write `frontend/index.html`:
+  - `<!DOCTYPE html>`, `lang="en"`, `<meta name="viewport" content="width=device-width, initial-scale=1">`
+  - `<meta name="theme-color" content="#2563eb">`
+  - CSS: `vars.css`, `reset.css`, `layout.css`, `landing.css`
+  - Zero JavaScript — the landing page must render fully without JS
+  - Body: simple `<nav>` with logo text; `<main>` with:
+    - Two circular trust photos (Tyler + Yuliya — use placeholder initially, replace with actual photos after seed)
+    - `<h1>Family Book</h1>`
+    - Tagline: 2 sentences max
+    - `<a href="/auth/login" class="btn btn-primary">Connect with Facebook</a>`
+    - Privacy note: "No ads. No tracking. Your data stays in our family."
+  - No Google Fonts, no third-party scripts, no analytics
+
+- [ ] Write `frontend/app.html`:
+  - Same `<head>` boilerplate
+  - CSS: `vars.css`, `reset.css`, `layout.css`, `tree.css`, `card.css`
+  - `<nav>`: logo left, `<form action="/auth/logout" method="post"><button>Logout</button></form>` right
+  - `<main id="tree-container">`:
+    - `<div id="loading-indicator">` (CSS spinner, shown until tree data loads)
+    - `<svg id="family-tree">` (D3 renders into this)
+  - `<aside id="person-card">` with full card DOM (see person card task)
+  - `<div id="person-card-backdrop">` (backdrop overlay)
+  - Scripts at end of `<body>`: `vendor/d3.v7.min.js`, `api.js`, `tree.js`, `card.js`, `app.js`
+
+- [ ] Commit: `feat(frontend): landing page + app shell HTML`
+
+---
+
+### Task 8: D3 Tree Visualization
+
+**Files:** `frontend/js/tree.js`, `frontend/js/app.js`, `frontend/js/api.js`, `frontend/css/tree.css`, download `frontend/js/vendor/d3.v7.min.js`
+
+- [ ] Download D3 v7.9.x minified JS from the D3 GitHub releases (not from CDN — self-host). Save to `frontend/js/vendor/d3.v7.min.js`.
+
+- [ ] Write `frontend/js/api.js`:
+  - `apiFetch(path, options)` wrapper: adds credentials mode, checks for 401 (redirects window to `/`), parses JSON response, throws on non-2xx with error detail.
+
+- [ ] Write `frontend/js/app.js`:
+  - `DOMContentLoaded`: show `#loading-indicator`
+  - Call `apiFetch('/api/tree')`
+  - Success: hide loading indicator, store `data.people` in module scope, call `initTree(data)`
+  - Error: show user-friendly error message, offer "Try again" button
+
+- [ ] Write `frontend/js/tree.js` with `initTree(data)`:
+
+  **Hierarchy conversion:** Call `d3.hierarchy(data.root)`. The API returns a pre-built nested structure — `d3.hierarchy()` wraps it in D3's node class.
+
+  **Layout:** `d3.tree().nodeSize([nodeW, nodeH])` where `nodeW` and `nodeH` depend on `window.innerWidth`:
+  - Mobile (< 640px): nodeW=80, nodeH=120
+  - Desktop (≥ 640px): nodeW=120, nodeH=160
+
+  **SVG setup:** select `#family-tree`, get width/height from container. Create inner `<g id="tree-group">` as zoom transform target.
+
+  **Render links first** (so nodes appear on top):
+  - `parent_child` edges: `d3.linkVertical()` paths with class `link-parent-child`
+  - After tree layout, iterate `data.edges` for spouse/sibling links: look up source and target x/y positions from the hierarchy node map, draw custom horizontal SVG paths with class `link-spouse` or `link-ex-spouse`
+
+  **Render nodes:** For each hierarchy datum, append `<g class="person-node branch-{branch}" data-id="{id}">` to `#tree-group`. Inside each group:
+  - `<clipPath id="clip-{id}">` containing `<circle r="{radius}">`
+  - `<image>` with placeholder `href` initially, clip-path applied, centered on origin
+  - `<circle class="node-ring">` with branch-class for colored stroke
+  - `<text class="node-name">` below circle — first name only, truncated to ~14 chars
+  - `<text class="node-relationship">` — relationship label
+  - CSS class for layer: add `layer-4` or `layer-5` based on `datum.data.layer`
+  - CSS class for memorial: add `is-memorial` if `datum.data.is_memorial`
+
+  **Photo lazy loading:** Create one `IntersectionObserver` for the SVG container. When a `<image>` element enters the viewport, swap the `href` from placeholder to `datum.data.photo_url || '/assets/avatar-placeholder.svg'`.
+
+  **Click handler:** On each node group: `d3.select(node).on("click", (event, datum) => { event.stopPropagation(); openPersonCard(datum.data.id); })`
+
+  **Zoom + pan:**
+  - `const zoom = d3.zoom().scaleExtent([0.2, 3]).on("zoom", ({transform}) => d3.select("#tree-group").attr("transform", transform))`
+  - Apply to SVG: `d3.select("#family-tree").call(zoom)`
+  - Auto-fit on load: compute bounding box of all nodes post-layout, derive `scale` and `translate` to center in viewport. Apply initial transform.
+
+- [ ] Write `frontend/css/tree.css`:
+  - `#tree-container`: `width: 100%; height: calc(100dvh - 56px); overflow: hidden; background: var(--color-bg); position: relative`
+  - `#family-tree`: `width: 100%; height: 100%; cursor: grab; touch-action: none`
+  - `#family-tree:active`: `cursor: grabbing`
+  - `.person-node`: `cursor: pointer; pointer-events: all` (pointer-events required for iOS Safari)
+  - `.node-ring`: `fill: none; stroke-width: 3px`
+  - `.branch-martin .node-ring`: `stroke: var(--branch-martin)`, etc. for all branches
+  - `.node-name`: `font-size: 12px; text-anchor: middle; fill: var(--color-text); font-family: var(--font-family)`
+  - `.node-relationship`: `font-size: 10px; text-anchor: middle; fill: var(--color-text-muted)`
+  - `.link-parent-child`: `fill: none; stroke: var(--color-link-line); stroke-width: 1.5px`
+  - `.link-spouse`: `fill: none; stroke: var(--color-link-line); stroke-dasharray: 6 3; stroke-width: 1.5px`
+  - `.link-ex-spouse`: `fill: none; stroke: var(--color-border); stroke-dasharray: 3 3; stroke-width: 1px`
+  - `.layer-4`: `opacity: 0.7`; `.layer-5`: `opacity: 0.5`
+  - `.is-memorial image`: `filter: grayscale(100%)`
+  - `#loading-indicator`: centered, CSS spinner animation
+
+- [ ] Manual test: run server, log in, confirm tree renders with seeded data, zoom/pan works
+- [ ] Test in Chrome DevTools: iPhone SE (375px), iPad (768px), desktop (1280px)
+- [ ] Commit: `feat(ui): D3 tree visualization with zoom/pan and photo lazy loading`
+
+---
+
+### Task 9: Person Card Component
+
+**Files:** `frontend/js/card.js`, `frontend/css/card.css`
+
+- [ ] Add card DOM to `frontend/app.html` (inside `<aside id="person-card">`):
+  - Drag handle div (mobile only visual)
+  - Close button `<button id="card-close" aria-label="Close">`
+  - `<img id="card-photo" alt="">` — circle-cropped via CSS
+  - `.card-memorial-badge` (hidden by default)
+  - `<h2 id="card-name">`
+  - `<p id="card-nickname">` (hidden if null)
+  - `<p id="card-relationship">`
+  - `<div class="card-location"><span id="card-flag"></span><span id="card-location-text"></span></div>`
+  - `<p id="card-birthday">` (hidden if null)
+  - `<div id="card-contacts">` (populated by JS)
+  - `<p id="card-bio">` (hidden if null)
+  - `<time id="card-updated">`
+
+- [ ] Write `frontend/js/card.js`:
+
+  **`openPersonCard(personId)`:**
+  1. Get person from module-scope `people` map (no extra API call)
+  2. Populate all DOM fields:
+     - `#card-name`: `display_name || (first_name + " " + last_name)` + nickname in parens if present
+     - `#card-photo src`: `photo_url || '/assets/avatar-placeholder.svg'`
+     - `#card-relationship`: from `relationship_label`
+     - `#card-flag`: Unicode flag emoji via Regional Indicator Symbol formula: `String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))`
+     - `#card-birthday`: if present and `layer <= 3`, format as "March 15". If admin, include year.
+     - `#card-contacts`: clear, then conditionally append contact links if `layer <= 2`:
+       - WhatsApp: `<a href="https://wa.me/{digits_only}" target="_blank" rel="noopener noreferrer">`
+       - Telegram: `<a href="https://t.me/{username}" target="_blank" rel="noopener noreferrer">`
+       - Signal: `<span>` with formatted number (no reliable deep link scheme)
+     - Toggle `is-memorial` class based on `is_memorial`
+  3. Show backdrop, show card (add `.open` class)
+  4. Trap focus within `#person-card` — cycle Tab through focusable elements, prevent escape to rest of page
+  5. Store reference to the tree node element that triggered open (for focus return on close)
+
+  **`closePersonCard()`:**
+  1. Remove `.open` from card and backdrop
+  2. Remove focus trap listener
+  3. Return focus to stored node element
+
+  **Dismiss triggers:**
+  - `#card-close` click
+  - `#person-card-backdrop` click
+  - `keydown` Escape
+  - Mobile swipe-down: `touchstart` → `touchmove` → `touchend`. If `deltaY > 60px` downward, close.
+
+- [ ] Write `frontend/css/card.css`:
+
+  **Mobile bottom sheet:**
+  - `#person-card`: `position: fixed; bottom: 0; left: 0; right: 0; height: 72dvh; background: var(--color-surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: var(--shadow-md); transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 200; overflow-y: auto; padding: var(--space-4)`
+  - `#person-card.open`: `transform: translateY(0)`
+  - Drag handle: `width: 40px; height: 4px; border-radius: var(--radius-full); background: var(--color-border); margin: 0 auto var(--space-4); cursor: grab`
+
+  **Backdrop:**
+  - `#person-card-backdrop`: `position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; display: none; backdrop-filter: blur(2px)`
+  - `.open`: `display: block`
+
+  **Photo:** `#card-photo`: `width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto var(--space-4)`
+
+  **Memorial:** `.card-memorial-badge`: hidden by default. `.is-memorial .card-memorial-badge`: shown as a small badge.
+
+  **Contact buttons:** `#card-contacts`: `display: flex; gap: var(--space-3); flex-wrap: wrap; margin-block: var(--space-4)`. `.contact-btn`: `min-height: 44px; padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm)`
+
+  **Tablet sidebar (`@media (min-width: 640px)`):**
+  - `#person-card`: `position: fixed; top: 56px; right: 0; bottom: 0; left: auto; width: 360px; height: auto; border-radius: var(--radius-lg) 0 0 0; transform: translateX(110%)`
+  - `.open`: `transform: translateX(0)`
+  - Drag handle hidden on tablet+
+
+- [ ] Test: mobile swipe dismiss, ESC key dismiss, focus trap, memorial mode appearance
+- [ ] Commit: `feat(ui): person card with bottom sheet, privacy-gated contacts, memorial mode`
+
+---
+
+### Task 10: Mobile CSS Design System
+
+**Files:** `frontend/css/vars.css`, `frontend/css/reset.css`, `frontend/css/layout.css`, `frontend/css/landing.css`
+
+Note: `tree.css` and `card.css` already written in Tasks 8-9 using vars. These vars must be finalized before those files are complete.
+
+- [ ] Write `frontend/css/vars.css`:
+
+  **Colors:**
+  - `--color-bg: #fafaf9` — warm off-white
+  - `--color-surface: #ffffff`
+  - `--color-text: #1c1917` — warm near-black
+  - `--color-text-muted: #78716c`
+  - `--color-border: #e7e5e4`
+  - `--color-accent: #2563eb` — CTA, links
+  - `--color-link-line: #d1d5db` — SVG tree connecting lines
+  - `--branch-martin: #2563eb`, `--branch-semesock: #16a34a`, `--branch-yuliya: #dc2626`
+
+  **Dark mode `@media (prefers-color-scheme: dark)`:** Override bg/surface/text/border. Reduce branch color saturation slightly.
+
+  **Typography (fluid, no web fonts):**
+  - `--font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif`
+  - `--text-xs` through `--text-2xl` using `clamp()` for fluid scaling across viewport widths
+
+  **Spacing:** `--space-1: 0.25rem` through `--space-12: 3rem`
+
+  **Radii:** `--radius-full: 9999px`, `--radius-lg: 0.75rem`, `--radius-md: 0.5rem`
+
+  **Shadows:** `--shadow-sm`, `--shadow-md`
+
+- [ ] Write `frontend/css/reset.css`:
+  - Universal `box-sizing: border-box; margin: 0; padding: 0`
+  - `body`: font, color, background from vars; `line-height: 1.5; -webkit-text-size-adjust: 100%`
+  - `img, svg`: `display: block; max-width: 100%`
+  - `button`: `cursor: pointer; font: inherit; border: none; background: none; padding: 0`
+  - `a`: `color: inherit; text-decoration: none`
+  - `:focus-visible`: `outline: 2px solid var(--color-accent); outline-offset: 2px` — NEVER `outline: none` globally
+  - `@media (prefers-reduced-motion: reduce)`: zero animation/transition durations on `*`
+
+- [ ] Write `frontend/css/layout.css` (mobile-first):
+  - `html, body { height: 100%; margin: 0 }`
+  - `body`: `min-height: 100svh; display: flex; flex-direction: column`
+  - `nav`: `height: 56px; display: flex; align-items: center; justify-content: space-between; padding-inline: var(--space-4); background: var(--color-surface); border-bottom: 1px solid var(--color-border)`
+  - Nav mobile: logo text left, logout icon button right (44×44 min tap target)
+  - `main`: `flex: 1; position: relative; overflow: hidden`
+  - iOS safe areas: `padding-top: env(safe-area-inset-top)` on nav
+  - **Logical properties throughout**: `padding-inline-start` not `padding-left`, `margin-block-end` not `margin-bottom`, `border-inline-start` not `border-left`, etc. This is non-negotiable — RTL support in Phase 4 requires it.
+  - `.btn`: `display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--space-3) var(--space-6); border-radius: var(--radius-md); font-size: var(--text-base); cursor: pointer`
+  - `.btn-primary`: `background: var(--color-accent); color: #fff`
+  - `@media (min-width: 640px)`: sidebar layout — when card is open, tree + card in grid
+
+- [ ] Write `frontend/css/landing.css`:
+  - `body` override for landing: center content vertically and horizontally
+  - `<main>`: `display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100svh - 56px); padding: var(--space-8) var(--space-4); text-align: center; max-width: 480px; margin-inline: auto`
+  - Trust photos: two 72px circle `<img>` elements in a flex row, centered
+  - Headline `<h1>`: `font-size: var(--text-2xl); font-weight: 700; margin-block: var(--space-4)`
+  - Tagline: `font-size: var(--text-base); color: var(--color-text-muted); max-width: 32ch; margin-inline: auto`
+  - CTA `.btn-primary`: `width: 100%; max-width: 360px; min-height: 56px; font-size: var(--text-lg); margin-block-start: var(--space-6)`
+  - Privacy note: `font-size: var(--text-xs); color: var(--color-text-muted); margin-block-start: var(--space-3)`
+
+- [ ] Test all CSS on Chrome DevTools: iPhone SE (375px), iPhone 14 Pro (393px), iPad (768px), desktop (1280px)
+- [ ] Toggle `prefers-color-scheme: dark` in DevTools — verify dark mode works
+- [ ] Commit: `feat(css): mobile-first design system`
+
+---
+
+### Task 11: Railway Deployment
+
+**Files:** `Dockerfile`, `railway.toml`, health endpoint in `backend/routers/tree.py`
+
+- [ ] Write `Dockerfile`:
+  - `FROM python:3.12-slim`
+  - `WORKDIR /app`
+  - `COPY pyproject.toml .`
+  - `RUN pip install --no-cache-dir .`
+  - `COPY backend/ backend/` `COPY frontend/ frontend/` `COPY migrations/ migrations/` `COPY alembic.ini .`
+  - `RUN mkdir -p data/photos` (Railway volume mounts over this, creating the real persistent dir)
+  - `EXPOSE 8000`
+  - `CMD alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}`
+  - Do NOT copy `.env` — secrets come from Railway env vars
+
+- [ ] Write `railway.toml`:
+  - `[build] builder = "DOCKERFILE" dockerfilePath = "Dockerfile"`
+  - `[deploy] healthcheckPath = "/api/health" healthcheckTimeout = 30 restartPolicyType = "ON_FAILURE" restartPolicyMaxRetries = 3`
+
+- [ ] Verify `GET /api/health` is implemented in `backend/routers/tree.py` (or `backend/main.py`): executes `SELECT 1`, returns `{"status": "ok"}`. No auth.
+
+- [ ] Railway dashboard setup:
+  - Create project → service linked to GitHub repo
+  - Add Volume mounted at `/app/data` — CRITICAL for SQLite and photo persistence
+  - Set all env vars (see table below)
+  - First deploy → confirm health check passes (green)
+  - `railway run python -m backend.seed` to load initial family data
+  - Update Facebook App: add Railway HTTPS URL to Valid OAuth Redirect URIs
+
+- [ ] Persistence test: add a test person via admin, trigger a redeploy, confirm person still exists
+
+- [ ] Commit: `chore(deploy): Dockerfile, railway.toml, health endpoint`
+
+**Railway Environment Variables:**
+
+| Variable | Example | Notes |
+|----------|---------|-------|
+| `FB_APP_ID` | `1234567890` | From Facebook Developer Console |
+| `FB_APP_SECRET` | `abc123...` | Never commit |
+| `FB_REDIRECT_URI` | `https://family-book.up.railway.app/auth/callback` | Must exactly match FB app settings |
+| `ADMIN_FB_IDS` | `111111111,222222222` | Tyler's + Yuliya's numeric FB user IDs |
+| `FERNET_KEY` | `<base64>` | Generate fresh for production |
+| `SESSION_SECRET` | `<64-char hex>` | Generate fresh for production |
+| `DATABASE_URL` | `sqlite:////app/data/family.db` | 4 slashes = absolute path |
+| `ROOT_PERSON_ID` | `<UUID>` | Root person's UUID from seed file |
+
+---
+
+### Task 12: End-to-End Verification
+
+- [ ] Desktop full flow: landing → Facebook login → tree renders → click person → card opens → logout
+- [ ] iPhone full flow: same, with swipe-down card dismiss, pinch-zoom on tree
+- [ ] iPad full flow: sidebar card layout, wider tree
+- [ ] Admin flow: Tyler adds person, adds relationship, verifies tree, deletes both
+- [ ] Non-admin privacy check: log in as test family member → confirm no admin endpoint access (403) → confirm Layer 4/5 person cards omit contact info
+- [ ] Root node privacy check: confirm "Our Family" appears as root in tree, inspect HTML source — no real child's name anywhere
+- [ ] Full test suite: `pytest tests/ -v --cov=backend --cov-report=term-missing`
+
+---
+
+## Gotchas Reference
+
+### Facebook API
+
+**1. Development mode limits** — App stays in dev mode until App Review. Only users added as Testers/Developers/Admins in App Roles can log in (max 40 total). Add each family member before sending the invite link.
+
+**2. `user_photos`/`user_friends` require App Review** — Phase 1 does NOT request them. Do not promise photo import until Phase 2 post-review.
+
+**3. Short-lived tokens expire in ~1 hour** — Always exchange for long-lived token (60 days) immediately in the callback. Never skip this.
+
+**4. Profile photo URLs are temporary** — `picture.data.url` from Graph API expires within hours. Download the photo to disk in the callback. Never store the CDN URL as `photo_url`.
+
+**5. State token is single-use** — Clear the CSRF state cookie after the callback regardless of success/failure. If callback is replayed, verify-and-fail gracefully → redirect to `/`, not 500.
+
+**6. `ADMIN_FB_IDS` needs numeric IDs** — Not vanity slugs. Get Tyler's and Yuliya's numeric IDs by calling `GET /me?fields=id` during first login. Hardcode in env var.
+
+**7. Graph API version pinning** — Pin all URLs to `v21.0`. Set a reminder to upgrade before it reaches end-of-life (~2 years).
+
+### SQLite on Railway
+
+**8. Volume mount path must match `DATABASE_URL`** — If `DATABASE_URL=sqlite:////app/data/family.db` but volume is at `/data`, you get an empty DB on every deploy. Verify before first real-data deploy.
+
+**9. WAL mode is essential** — Without it, concurrent async reads during a write → "database is locked" errors. Add `PRAGMA journal_mode=WAL` to the connection event listener.
+
+**10. Foreign keys are off by default** — Add `PRAGMA foreign_keys=ON` to the same listener. Without it, cascade deletes silently fail.
+
+**11. Alembic autogenerate is unreliable for SQLite changes** — Most `ALTER TABLE` operations are unsupported. Write future schema migrations manually. Document in CLAUDE.md.
+
+**12. `data/photos/` must exist before first photo download** — Create it in FastAPI `lifespan` startup. The Railway volume provides `/app/data/` but not `photos/` subdirectory.
+
+### D3 and SVG
+
+**13. D3 hierarchy requires single connected root** — Persons unreachable from root via BFS are excluded from `/api/tree`. Surface them in admin panel as "Unconnected Persons."
+
+**14. Spouses violate hierarchy** — Don't put spouses into `d3.hierarchy()`. Render them via custom SVG path elements using the `edges` list from the API, after the tree layout runs.
+
+**15. iOS Safari SVG tap events need `pointer-events: all`** — Without it, taps on `<g>` elements silently do nothing. Add to `.person-node` in `tree.css`.
+
+**16. iOS Safari pinch-zoom fights d3.zoom** — Set `touch-action: none` on `#family-tree`. Without it, browser zoom and d3.zoom conflict.
+
+**17. SVG `<text>` doesn't wrap** — Truncate node name to ~14 characters in the tree. Show full name in the card.
+
+**18. SVG `<image>` is same-origin in Phase 1** — Photos served from `/photos/` (same origin). No CORS issues. If photos move to R2 in Phase 2, configure CORS on the bucket.
+
+### Privacy and Security
+
+**19. Root node name assertion must be in tests** — `test_api_tree.py` must assert the root node's `name` field in the API response equals "Our Family" (or placeholder). This test catches any accidental real-name exposure.
+
+**20. `FERNET_KEY` rotation breaks all sessions** — All encrypted tokens become unreadable. All users must re-login. Document in CLAUDE.md.
+
+**21. SameSite=Lax is required (not Strict)** — Strict blocks the OAuth redirect from carrying the state cookie back to the callback. Keep Lax.
+
+### General
+
+**22. `branch` field must be in `family_tree.json`** — Not derived from UUIDs. Store `branch` on the Person, save it in seed JSON. If hardcoded to UUIDs, any seed regeneration silently breaks branch coloring.
+
+**23. WhatsApp phone numbers need normalization** — `wa.me` requires digits only, no `+` or spaces. Strip all non-digits from `contact_whatsapp` before building the link URL.
+
+**24. `updated_at` won't auto-update reliably** — SQLAlchemy's `onupdate=func.now()` is unreliable with SQLite TEXT dates. Use a `@event.listens_for(Session, "before_flush")` listener to set `updated_at = datetime.utcnow().isoformat()` on all `dirty` objects.
+
+**25. Admin FB IDs env var is the sole admin gate** — If Tyler's Facebook account is compromised, so is Family Book admin. Acceptable risk for Phase 1. Document in CLAUDE.md.
+
+---
+
+## Local Development
+
+```
+# Install
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+# Configure
+cp .env.example .env
+# Edit .env: add FB_APP_ID, FB_APP_SECRET, generate FERNET_KEY and SESSION_SECRET
+
+# Initialize DB
+alembic upgrade head
+
+# Seed data
+python -m backend.seed
+
+# Run
+uvicorn backend.main:app --reload --port 8000
+
+# Test
+pytest tests/ -v
+```
+
+---
+
+## Test Coverage Targets
+
+| Module | Priority | Key Scenarios |
+|--------|----------|--------------|
+| `backend/graph.py` | Critical | All label permutations; all privacy layer rules; ex-spouse → L5; marriage graft |
+| `backend/oauth.py` | High | OAuth URL; code exchange (httpx mocked); upsert creates vs updates; admin detection |
+| `backend/routers/tree.py` | High | Auth gate; JSON shape; root node name assertion; layer field gating |
+| `backend/routers/people.py` | High | Auth gates; CRUD; 404; 403; privacy field gating by layer |
+| `backend/seed.py` | Medium | Idempotency; is_root exists; admins correct |
+| `backend/models.py` | Medium | Unique constraints; FK cascade; check constraints |
+
+---
+
+## Implementation Order
+
+1. Human bottlenecks: FB app, UUIDs, root person identity
+2. Task 1 — Project scaffolding
+3. Task 2 — Database models + Alembic migration
+4. Task 3 — Seed data + loader
+5. Task 6 — FastAPI app shell + health endpoint (partial, from Task 6)
+6. Task 4 — Graph engine (TDD)
+7. Task 5 — Facebook OAuth + session auth
+8. Task 6 — API endpoints (complete)
+9. Task 7 — Frontend templates
+10. Task 8 — D3 tree visualization
+11. Task 9 — Person card
+12. Task 10 — Mobile CSS design system (finalize vars, complete tree.css + card.css)
+13. Task 11 — Railway deployment
+14. Task 12 — End-to-end verification
+
+---
+
+## Phase 1 Definition of Done
+
+- [ ] Tyler logs in via Facebook and sees the seeded family tree
+- [ ] Yuliya logs in via Facebook and sees the family tree
+- [ ] At least one other family member (test user) logs in and sees tree with correct relationship labels
+- [ ] Luna's real name does not appear in the UI, API responses, HTML source, or logs
+- [ ] Tree renders with photos, names, connecting lines — zoom/pan works on desktop and mobile
+- [ ] Tapping any person opens their card: photo, relationship label, location flag, birthday, contact links (privacy-gated)
+- [ ] All tests pass: `pytest tests/ -v`
+- [ ] App deployed on Railway, accessible at HTTPS URL
+- [ ] SQLite data persists across Railway redeploys
+- [ ] Tyler and Yuliya can add, edit, delete persons and relationships from the admin UI
+
+**Prod URL:** _(update after Railway deploy)_
+**Local:** [http://localhost:8000](http://localhost:8000)
