@@ -611,15 +611,35 @@ The Moments feed is what most family members see most of the time. It's the livi
 
 **Posting a New Moment:**
 
-1. Tap [+ New Moment] button (FAB on mobile, top bar on desktop)
-2. Modal/sheet slides up:
-   - Photo/video picker (multi-select, max 10)
-   - Caption text field (max 5000 chars)
-   - "Who is this about?" — optional person tag (autocomplete from family members)
-   - "When?" — defaults to now, can backdate
-   - Post button
-3. Upload photos → create Photo records → create Moment record → appears at top of feed
-4. HTMX: new Moment prepended to feed without page reload
+The posting UX must feel like sending a WhatsApp message, not posting to a social network. WhatsApp is the competitor. The friction must be identical or lower.
+
+**Primary flow (WhatsApp-level friction):**
+1. Tap 📷 button (always visible at bottom of feed, like a chat input bar)
+2. Camera opens OR photo picker opens (device native)
+3. Select photo(s) / take photo (multi-select, max 10)
+4. Caption field appears below photo preview (optional, like WhatsApp caption)
+5. Tap ✈️ send
+6. Photo + caption appear at top of feed. Instantly. Everyone sees it.
+
+That's it. 4 taps from "I want to share this" to "everyone sees it." Same as WhatsApp.
+
+**The feed input bar (always visible at bottom of feed):**
+```
+┌─────────────────────────────────────────────┐
+│  📷  Type a message...              ✈️  │
+└─────────────────────────────────────────────┘
+```
+Just like a chat app. Tap 📷 for photo/video. Type text for a text-only Moment. Tap send. Done.
+
+**Optional metadata (NOT required, discoverable but hidden):**
+- "Tag someone" — small @ icon in caption bar. Autocompletes family names. Optional.
+- "Backdate" — long-press the send button reveals date picker. For uploading old photos.
+- These are power features. They NEVER block the primary flow.
+
+**Technical flow:**
+1. Upload photos → create Photo records → create Moment record → appears at top of feed
+2. HTMX: new Moment prepended to feed without page reload
+3. WebSocket or SSE push: other family members see new Moments appear in real-time without refreshing
 
 **Infinite Scroll:**
 - Initial load: 20 Moments
