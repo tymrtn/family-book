@@ -2435,6 +2435,8 @@ The software is free. The expertise to set it up well is the service. Same model
 - No venture-funded growth metrics. No MAU. No engagement optimization.
 - No claim of "self-hosted" when running on Railway — it's Tyler's account, not Tyler's hardware
 - No runtime LLM calls in production
+- No face recognition / biometric processing (DEFERRED — not "never," but not now. Current local models need 4-8GB RAM, GDPR Article 9 makes biometric data special-category, and the 1-2GB multimodal models coming in 2027 will make this trivially easy on commodity hardware. Revisit when the tooling catches up. Until then, manual person tagging is fine for family scale.)
+- No "smart search" that requires ML inference. Search is text-based: names, dates, captions, locations. When small multimodal models can run on a $5 VPS, add image-to-text captioning as an offline batch job.
 
 ---
 
