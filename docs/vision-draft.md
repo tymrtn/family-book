@@ -85,23 +85,42 @@ Milestones are the structural events that shape the tree AND generate Moments:
 
 ## Platform Integration — Where Each Fits
 
-### WhatsApp (TBD — needs deep research)
-**Role:** Potentially a bridge between the sovereign family domain and where family members already live.
+### SMS / MMS (primary notification channel — universal)
+**Role:** The notification backbone. Every family member on Earth can receive a text message.
 
-**Reality check:** WhatsApp Business API is no longer free. Bot pricing, message template restrictions, and Meta's shifting policies make this a moving target. wacli works for personal-account automation but may not scale to a family group notification system without violating ToS.
+**Why SMS wins:**
+- Бабушка in Moscow has SMS. Aunt Shelley in Calgary has SMS. Every phone everywhere has SMS.
+- No app to install. No bot to add. No API pricing games.
+- iMessage, SMS, WhatsApp — families already share baby photos through these channels because they *feel* sovereign and private. Family Book should feel the same way.
+- MMS supports photos directly in the message — grandma sees the baby photo in her texts without tapping a link.
 
-**Possible fits:**
-- **Family WhatsApp group as bridge:** A shared group where Family Book posts digests or milestone alerts. Family members already live here. But this is manual or semi-automated at best.
-- **Profile photo sync:** wacli can still pull profile photos passively (low-risk, no bot API needed)
-- **Inbound forwarding:** "Forward this photo to family@martin.fm" works via email, doesn't need WhatsApp API at all
+**Integration:**
+- **Outbound notifications:** SMS with a deep link to the latest Moments. "3 new photos from Tyler! → martin.fm/moments"
+- **MMS option:** For milestone photos (first steps, birthdays), send the photo directly as MMS. Бабушка sees it without opening a browser.
+- **Birthday reminders:** SMS: "Дядя Саша's birthday is tomorrow! 🎂 → martin.fm/people/uuid"
+- **Weekly digest:** SMS: "This week in your family: 5 new photos, Dmitri graduated! → martin.fm/moments"
+- **Inbound (future):** Reply with a photo → it gets added to Moments (requires MMS ingestion pipeline, Phase 3+)
 
-**What needs research before committing:**
-- Current WhatsApp Business API pricing (per-message costs, monthly fees)
-- WhatsApp Cloud API vs on-premise API vs wacli personal automation
-- ToS risk: is automated posting to a family group a violation?
-- Alternative: just use the family WhatsApp group manually as a "hey, new photos on Family Book" notification channel
+**Implementation:**
+- Twilio or similar SMS/MMS API (proven, global reach, simple pricing per message)
+- Phone numbers already in Person.contact_whatsapp / Person.contact_signal fields (rename to contact_phone or add dedicated field)
+- International SMS: Twilio handles routing to Russia, Canada, Spain, US
+- Cost: ~$0.01-0.05 per SMS depending on country. For a family of 30-50 people, weekly digest = $1-2/month total.
 
-**Verdict:** Don't build WhatsApp integration into the spec until the research is done. It's either a high-value bridge or a compliance liability. No middle ground.
+**The sovereignty angle:** If the SMS setup is clean and efficient, it becomes part of the overall data sovereignty story. Your notifications don't go through Meta or Telegram's servers. They go through the phone network — the most decentralized communication infrastructure humans have built.
+
+### WhatsApp (natural bridge — where families already live)
+**Role:** Not a bot integration. A human bridge.
+
+**Reality:** Most close families already have a WhatsApp group. Baby photos, travel updates, birthday wishes — they're all there already. Family Book doesn't need to replace this or automate it.
+
+**Integration (light touch):**
+- **Manual bridge:** Tyler (or any admin) shares Family Book links in the family WhatsApp group: "New photos up! → martin.fm/moments"
+- **Profile photo sync:** wacli can passively pull profile photos (low-risk, personal account automation)
+- **No bot, no Business API, no automation.** WhatsApp is the existing family channel. Family Book is the archive. They complement each other without needing an API bridge.
+- **Data export:** WhatsApp chat export (built-in feature) can be ingested by Family Book for historical photo recovery (Phase 3)
+
+**Verdict:** WhatsApp integration is a *human* workflow, not a technical one. The family WhatsApp group continues to exist. Family Book is where the data lives permanently.
 
 ### Email (Envelope)
 **Role:** Ingestion pipeline for data exports + magic link auth + milestone notifications.
@@ -141,29 +160,26 @@ Milestones are the structural events that shape the tree AND generate Moments:
 - **Embed:** Instagram oEmbed for linked posts
 - **Why it fits:** Travel photos, food photos, life updates. The stuff families already share on Instagram but scattered across individual accounts.
 
-### Telegram (proven portal — high confidence)
-**Role:** Primary notification channel + bot interface + photo ingestion.
+### Telegram (optional — power users + Russian family)
+**Role:** Rich bot interface for family members who use Telegram.
 
-**Why Telegram is the strongest candidate:** OpenClaw has already proven that Telegram is a viable portal into private systems. The bot API is free, well-documented, stable, and supports rich media (photos, videos, inline keyboards, buttons). No Business API pricing games. No Meta policy shifts.
-
-**Integration:**
-- **Family Book Telegram Bot:** A dedicated bot that family members add. This is the primary interface for non-web interactions.
-- **Notifications:** Milestone alerts, birthday reminders, weekly Moments digest — pushed via bot
-- **Bot commands:** `/recent` (latest Moments), `/birthday` (upcoming), `/tree` (link to tree view), `/upload` (add photo to Moments)
-- **Photo upload:** Send photos directly to the bot → auto-adds to sender's Moments feed
-- **Inline keyboards:** "New photo from Tyler! [View] [❤️] [Reply]"
-- **Why it fits:** Tyler's family uses Telegram. Russian family members prefer it. The bot API has zero cost. OpenClaw proves the architecture works.
-
-### Signal (optional — for privacy maximalists)
-**Role:** Alternative notification + ingestion channel for family members who prioritize privacy.
+**Reality:** The Russian side of the family uses Telegram, but even that may be temporary (regulatory pressure). Telegram is a strong *optional* channel, not the primary one.
 
 **Integration:**
-- OpenClaw has demonstrated Signal as a viable portal
-- Same bot-like interaction pattern as Telegram but with Signal's encryption guarantees
+- **Family Book Telegram Bot:** For family members who prefer it. Photo upload, commands, inline keyboards.
+- **Notifications:** Milestone alerts, birthday reminders, Moments digest — via bot
+- **Bot commands:** `/recent` (latest Moments), `/birthday` (upcoming), `/upload` (add photo)
+- **Why it's optional, not primary:** Not everyone uses Telegram. SMS reaches everyone. Telegram is the rich-UI bonus for those who want it.
+
+### Signal (optional — privacy maximalists)
+**Role:** Alternative channel for family members who prioritize privacy above all.
+
+**Integration:**
+- OpenClaw has demonstrated Signal as a viable portal into private systems
 - Photo ingestion: send photos to a Signal number → Family Book receives via OpenClaw bridge
 - Notifications: milestone alerts, digest
-- **Why it fits:** If the whole point is data sovereignty, offering a Signal channel is philosophically aligned. Some family members will actively prefer it over Telegram.
-- **Trade-off:** Signal's bot/automation story is less mature than Telegram's. OpenClaw bridges this but it's an additional dependency.
+- **Trade-off:** Signal's bot/automation story is less mature. OpenClaw bridges this but adds dependency.
+- **Verdict:** Nice-to-have for Phase 3+. Philosophically aligned with data sovereignty.
 
 ### Mastodon / ActivityPub (Phase 4+)
 **Role:** Federated family presence for the post-platform future.
@@ -192,14 +208,15 @@ Milestones are the structural events that shape the tree AND generate Moments:
             │                    │                     │
     ┌───────┼────────┐   ┌──────┼──────┐       ┌──────┼──────┐
     │       │        │   │      │      │       │      │      │
-  Email  Telegram TikTok  Email Telegram  Facebook  Google  Magic
-(Envelope) (Bot) (oEmbed) (SMTP)  (Bot)   (OAuth)  (OAuth) Link
+  Email  TikTok  Facebook SMS/MMS Email   Facebook  Google  Magic
+(Envelope)(oEmbed)(Export) (Twilio)(SMTP)  (OAuth)  (OAuth) Link
     │       │        │      │      │       
-  Photos  Photos   Links  Digest Birthday  
-  Exports Upload   Embeds Weekly  Alerts   
+  Photos  Links   Photos  Photos  Digest   
+  Exports Embeds  Profile  Links  Weekly   
   
+  Optional: Telegram bot (power users)
   Optional: Signal (via OpenClaw bridge)
-  Optional: WhatsApp (pending research on API costs + ToS)
+  WhatsApp: human bridge (admin shares links in family group)
 ```
 
 ## Data Sovereignty — The Real Pitch
@@ -303,19 +320,21 @@ Everything in spec v2 Phase 1. This is the skeleton.
 - Memorial mode for deceased persons
 
 ### Phase 2 — Notifications + Ingestion (the glue)
-- Telegram bot (primary: notifications + photo upload + commands)
+- SMS/MMS notifications via Twilio (birthday reminders, milestone alerts, weekly digest with deep links)
+- MMS photo delivery for key moments (grandma sees the photo in her texts)
 - Email ingestion via Envelope (forward photos → Moments)
 - Email notifications (weekly digest, milestone alerts)
-- Signal bridge via OpenClaw (optional, for privacy-first family members)
 - Magic link + invite improvements
 - i18n (en, ru, es)
 
-### Phase 3 — Platform Import (the data liberation)
+### Phase 3 — Platform Import + Optional Channels (the data liberation)
 - Facebook data export ingestion (one-time photo + profile import)
 - Instagram data export ingestion
+- WhatsApp chat export ingestion (historical photo recovery)
 - TikTok/Instagram oEmbed in Moments
 - GEDCOM import pipeline
-- WhatsApp integration (IF research confirms viable API + ToS path)
+- Telegram bot (optional, for power users + Russian family)
+- Signal bridge via OpenClaw (optional, for privacy maximalists)
 
 ### Phase 4 — Privacy Engine + Federation
 - Graph-distance ACL
