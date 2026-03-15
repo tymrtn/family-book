@@ -214,6 +214,28 @@ The beating heart of Family Book. A reverse-chronological feed of family life.
 - `person_id` = the sender (as mapped by admin)
 - `body` = message text that accompanied the photo (if any)
 
+### MomentReaction
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| moment_id | UUID | yes | — | FK → Moment.id, ON DELETE CASCADE | |
+| person_id | UUID | yes | — | FK → Person.id | |
+| emoji | str | yes | — | max 10 chars, single emoji | ❤️ 😂 😢 🎉 🙏 😮 |
+| created_at | datetime | yes | now() | | |
+
+**Constraints:** Unique on (moment_id, person_id). One reaction per person per Moment.
+
+### MomentComment
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| moment_id | UUID | yes | — | FK → Moment.id, ON DELETE CASCADE | |
+| person_id | UUID | yes | — | FK → Person.id | |
+| body | str | yes | — | max 2000 chars | Plain text + emoji. No markdown. |
+| created_at | datetime | yes | now() | | |
+
 ### GedcomImportBatch (specced now, built later)
 
 | Field | Type | Required | Default | Constraints | Notes |
