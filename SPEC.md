@@ -69,7 +69,8 @@ The tree has a designated root person for visualization. This is a **real person
 | facebook_id | str | no | null | max 100, unique | From OAuth. For dedup. |
 | facebook_token_encrypted | bytes | no | null | Fernet-encrypted | Long-lived token. Encrypted at rest. |
 | facebook_token_expires | datetime | no | null | | 60-day expiry from Meta |
-| source | enum | yes | manual | manual, facebook_oauth, gedcom_import, federation | How this person entered the system |
+| account_state | enum | yes | active | active, pending, suspended | Auth state for login. Pending = awaiting admin approval. |
+| source | enum | yes | manual | manual, facebook_oauth, gedcom_import, whatsapp_import, messenger_import, federation, matrix | How this person entered the system |
 | created_by | UUID | no | null | FK → Person.id | Who added this record |
 | created_at | datetime | yes | now() | | |
 | updated_at | datetime | yes | now() | | Auto-updated on change |
@@ -235,6 +236,214 @@ The beating heart of Family Book. A reverse-chronological feed of family life.
 | person_id | UUID | yes | — | FK → Person.id | |
 | body | str | yes | — | max 2000 chars | Plain text + emoji. No markdown. |
 | created_at | datetime | yes | now() | | |
+
+### Media
+
+Generalizes Photo to support video, audio, stickers, GIFs, and external embeds. Replaces Photo as the primary media entity.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| person_id | UUID | yes | — | FK → Person.id | Who this media belongs to |
+| file_path | str | no | null | max 500 | Relative path under /data/media/. Null for external embeds. |
+| original_filename | str | no | null | max 300 | |
+| media_type | enum | yes | — | image, video, audio, sticker, gif, embed | |
+| mime_type | str | no | null | max 50 | image/jpeg, image/png, image/webp, video/mp4, audio/opus, audio/mp3, image/gif |
+| width | int | no | null | | Pixels (images/video) |
+| height | int | no | null | | |
+| duration_seconds | float | no | null | | For video/audio |
+| file_size_bytes | int | no | null | | |
+| file_hash | str | no | null | max 64 | SHA-256 for dedup |
+| embed_url | str | no | null | max 2000 | For TikTok/Instagram/YouTube oEmbed |
+| embed_provider | str | no | null | max 50 | tiktok, instagram, youtube |
+| embed_html | str | no | null | max 5000 | Cached oEmbed HTML |
+| caption | str | no | null | max 1000 | |
+| taken_date | date | no | null | | From EXIF or manual |
+| source | enum | yes | manual | manual, whatsapp_import, facebook_import, messenger_import, instagram_import, email, share_sheet, telegram, matrix, facebook_oauth | |
+| is_profile | bool | yes | false | At most one per person | Used as Person.photo_url |
+| uploaded_by | UUID | no | null | FK → Person.id | |
+| created_at | datetime | yes | now() | | |
+
+**Accepted MIME types for upload/import:**
+
+| Category | MIME Types | Max Size |
+|----------|-----------|----------|
+| Image | image/jpeg, image/png, image/webp, image/gif | 10 MB |
+| Video | video/mp4, video/quicktime, video/webm | 100 MB |
+| Audio | audio/opus, audio/mp3, audio/m4a, audio/ogg | 25 MB |
+
+### Invite
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| person_id | UUID | yes | — | FK → Person.id | Who this invite is for |
+| token | str | yes | — | 64-char hex, unique | URL-safe token |
+| created_by | UUID | yes | — | FK → Person.id (admin) | |
+| claimed_at | datetime | no | null | | Set when invite is claimed |
+| expires_at | datetime | yes | +30 days | | |
+| revoked | bool | yes | false | | Admin can revoke |
+| created_at | datetime | yes | now() | | |
+
+**Constraints:** Unique on token. One active (unclaimed, unrevoked, unexpired) invite per person at a time.
+
+### MagicLinkToken
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| person_id | UUID | yes | — | FK → Person.id | |
+| token_hash | str | yes | — | SHA-256 of token | Never store raw token |
+| expires_at | datetime | yes | +15 min | | |
+| used_at | datetime | no | null | | Set when token is used |
+| created_at | datetime | yes | now() | | |
+
+### MemorialPlan
+
+Pre-planning data for a person's memorial. Private until `Person.is_living = false`.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| person_id | UUID | yes | — | FK → Person.id, unique | One plan per person |
+| memorial_photo_id | UUID | no | null | FK → Media.id | Chosen hero photo |
+| memorial_bio | str | no | null | max 5000 | Their words, their story |
+| memorial_message | str | no | null | max 5000 | Revealed after death |
+| memorial_music_url | str | no | null | max 2000 | Spotify/YouTube link |
+| memorial_wishes | str | no | null | max 2000 | What to share, what stays private |
+| contact_visible_after_death | bool | no | false | | |
+| updated_at | datetime | yes | now() | | |
+| created_at | datetime | yes | now() | | |
+
+### Notification
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| recipient_id | UUID | yes | — | FK → Person.id | |
+| kind | enum | yes | — | new_moment, birthday, anniversary, memorial_anniversary, digest, milestone, system | |
+| reference_type | str | no | null | "moment", "person" | What this notification is about |
+| reference_id | UUID | no | null | | FK to Moment.id or Person.id |
+| title | str | yes | — | max 300 | |
+| body | str | no | null | max 2000 | |
+| media_id | UUID | no | null | FK → Media.id | Photo to send with notification |
+| created_at | datetime | yes | now() | | |
+
+### NotificationDelivery
+
+Tracks actual delivery attempts per channel.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| notification_id | UUID | yes | — | FK → Notification.id | |
+| channel | enum | yes | — | mms, whatsapp, telegram, signal, email, matrix | |
+| status | enum | yes | pending | pending, sent, delivered, failed, bounced | |
+| external_id | str | no | null | max 500 | Twilio SID, Telegram message_id, etc. |
+| error_message | str | no | null | max 1000 | On failure |
+| sent_at | datetime | no | null | | |
+| delivered_at | datetime | no | null | | |
+| retry_count | int | yes | 0 | max 3 | |
+| created_at | datetime | yes | now() | | |
+
+### NotificationPreference
+
+Per-person push settings. Managed by admin initially, editable by member later.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| person_id | UUID | yes | — | FK → Person.id, unique | One row per person |
+| push_channel | enum | yes | auto | auto, whatsapp, telegram, signal, sms, email, none | |
+| push_phone | str | no | null | E.164 | For MMS/WhatsApp/Signal |
+| push_email | str | no | null | max 320 | |
+| push_telegram_id | str | no | null | max 100 | |
+| push_frequency | enum | yes | weekly_digest | realtime, daily_digest, weekly_digest | |
+| push_milestones | bool | yes | true | | Always push births, deaths, marriages |
+| created_at | datetime | yes | now() | | |
+| updated_at | datetime | yes | now() | | |
+
+### ApprovalRequest
+
+Lightweight governance votes for sensitive actions.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| kind | enum | yes | — | minor_photo, memorial_creation, estrangement, readd_ex, visibility_escalation | |
+| subject_id | UUID | yes | — | FK → Person.id | Person the decision is about |
+| initiated_by | UUID | yes | — | FK → Person.id | |
+| reference_type | str | no | null | "moment", "person" | |
+| reference_id | UUID | no | null | | |
+| required_voters | JSON | yes | — | Array of Person.id UUIDs | Who needs to vote (computed from graph) |
+| threshold | enum | yes | — | all, majority, both_parents | |
+| status | enum | yes | open | open, approved, rejected, expired | |
+| resolved_at | datetime | no | null | | |
+| expires_at | datetime | yes | +7 days | | |
+| created_at | datetime | yes | now() | | |
+
+### ApprovalVote
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| request_id | UUID | yes | — | FK → ApprovalRequest.id | |
+| voter_id | UUID | yes | — | FK → Person.id | |
+| vote | enum | yes | — | approve, reject | |
+| created_at | datetime | yes | now() | | |
+
+**Constraints:** Unique on (request_id, voter_id).
+
+### AgentApiKey
+
+API keys for the Family Graph Agent API.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| name | str | yes | — | max 200 | "Mom's caregiving robot", "Tyler's assistant" |
+| key_hash | str | yes | — | SHA-256 of API key | Never store raw key |
+| key_prefix | str | yes | — | max 8 | First 8 chars of key, for identification |
+| scope | enum | yes | — | household, immediate, extended, full | |
+| person_id | UUID | yes | — | FK → Person.id | The person this key is scoped to |
+| created_by | UUID | yes | — | FK → Person.id (admin) | |
+| last_used | datetime | no | null | | |
+| revoked | bool | yes | false | | |
+| expires_at | datetime | no | null | | Null = no expiry |
+| created_at | datetime | yes | now() | | |
+
+### WhatsappImportBatch
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| filename | str | yes | — | max 300 | Original .zip filename |
+| raw_content_path | str | yes | — | max 500 | Path to stored .zip |
+| date_format | str | no | null | max 50 | Detected: "DD/MM/YYYY" or "MM/DD/YY" etc. |
+| group_name | str | no | null | max 300 | Extracted from chat header |
+| status | enum | yes | pending | pending, parsing, mapping, importing, paused, completed, failed | |
+| stats | JSON | no | {} | | { messages: N, media: N, contacts: N, matched: N, new: N, imported: N, skipped: N, errors: N } |
+| sender_mappings | JSON | no | {} | | { "WhatsApp Name": "person-uuid-or-null" } |
+| imported_by | UUID | yes | — | FK → Person.id | |
+| created_at | datetime | yes | now() | | |
+| completed_at | datetime | no | null | | |
+
+### MessengerImportBatch
+
+Same pattern as WhatsappImportBatch but for Facebook Messenger exports.
+
+| Field | Type | Required | Default | Constraints | Notes |
+|-------|------|----------|---------|-------------|-------|
+| id | UUID | yes | auto | PK | |
+| filename | str | yes | — | max 300 | |
+| raw_content_path | str | yes | — | max 500 | |
+| group_name | str | no | null | max 300 | From participants or folder name |
+| status | enum | yes | pending | pending, parsing, mapping, importing, paused, completed, failed | |
+| stats | JSON | no | {} | | |
+| sender_mappings | JSON | no | {} | | |
+| imported_by | UUID | yes | — | FK → Person.id | |
+| created_at | datetime | yes | now() | | |
+| completed_at | datetime | no | null | | |
 
 ### GedcomImportBatch (specced now, built later)
 
@@ -403,7 +612,7 @@ Admins can override computed layers per person:
 | PUT | `/api/persons/{id}` | admin (or self for own profile) | `PersonUpdate` | 200: `PersonDetail` | 400, 401, 403, 404 |
 | DELETE | `/api/persons/{id}` | admin | — | 204 | 401, 403, 404 |
 
-**PersonSummary:** `{ id, first_name, last_name, nickname, photo_url, residence_country_code, branch, is_living, visibility }`
+**PersonSummary:** `{ id, display_name, nickname, photo_url, residence_country_code, branch, is_living, visibility }` — `display_name` is computed server-side: if `is_root=true`, returns "Our Family" / localized. Otherwise `first_name last_name` (or patronymic order per `name_display_order`). Raw `first_name`/`last_name` NEVER exposed for root person.
 **PersonDetail:** PersonSummary + `{ patronymic, birth_last_name, gender, birth_date (if permitted), bio, languages, contacts (if permitted), all relationship labels to viewer }`
 **PersonCreate:** `{ first_name, last_name, patronymic?, birth_last_name?, nickname?, gender?, birth_date_raw?, birth_place?, residence_place?, residence_country_code?, branch?, bio?, contact_*? }`
 
@@ -463,11 +672,105 @@ Admins can override computed layers per person:
 | POST | `/api/admin/persons/{id}/approve` | admin | — | 200 | 401, 404 |
 | POST | `/api/admin/persons/{id}/suspend` | admin | — | 200 | 401, 404 |
 
+### Memorial Endpoints
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| GET | `/api/memorial/{person_id}` | member | — | 200: MemorialPage | 401, 404 (or 403 if is_living=true) |
+| GET | `/api/memorial/{person_id}/plan` | self only | — | 200: MemorialPlan | 401, 403, 404 |
+| PUT | `/api/memorial/{person_id}/plan` | self only | `{ memorial_bio?, memorial_message?, memorial_music_url?, memorial_wishes?, memorial_photo_id?, contact_visible_after_death? }` | 200: MemorialPlan | 401, 403, 404 |
+| POST | `/api/memorial/{person_id}/mark-deceased` | admin or immediate family | `{ death_date, death_date_raw? }` | 200 | 401, 403, 404, 409 (already deceased) |
+| POST | `/api/memorial/{person_id}/tributes` | member | `{ body, photo_id? }` | 201: Tribute | 401, 403 (if person is living), 404 |
+| GET | `/api/memorial/{person_id}/tributes` | member | — | 200: `[Tribute]` | 401, 404 |
+| DELETE | `/api/memorial/{person_id}/tributes/{id}` | admin or author | — | 204 | 401, 403, 404 |
+
+### Import Endpoints
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| POST | `/api/admin/import/whatsapp` | admin | multipart: .zip file | 201: `{ batch_id, status: "parsing", stats }` | 400, 401, 413 |
+| GET | `/api/admin/import/whatsapp/{batch_id}` | admin | — | 200: WhatsappImportBatch with sender_mappings | 401, 404 |
+| PUT | `/api/admin/import/whatsapp/{batch_id}/mappings` | admin | `{ sender_mappings: { "Name": "person-uuid" } }` | 200 | 401, 404 |
+| POST | `/api/admin/import/whatsapp/{batch_id}/execute` | admin | — | 200: `{ status: "importing" }` | 401, 404, 409 (already importing) |
+| POST | `/api/admin/import/whatsapp/{batch_id}/pause` | admin | — | 200 | 401, 404 |
+| POST | `/api/admin/import/whatsapp/{batch_id}/resume` | admin | — | 200 | 401, 404 |
+| POST | `/api/admin/import/messenger` | admin | multipart: .zip file | 201: `{ batch_id, status: "parsing", stats }` | 400, 401, 413 |
+| GET | `/api/admin/import/messenger/{batch_id}` | admin | — | 200: MessengerImportBatch | 401, 404 |
+| PUT | `/api/admin/import/messenger/{batch_id}/mappings` | admin | `{ sender_mappings }` | 200 | 401, 404 |
+| POST | `/api/admin/import/messenger/{batch_id}/execute` | admin | — | 200 | 401, 404 |
+| POST | `/api/admin/import/gedcom` | admin | multipart: .ged file | 201: `{ batch_id }` | 400, 401, 413 |
+| GET | `/api/admin/import/gedcom/{batch_id}` | admin | — | 200: GedcomImportBatch with staged records | 401, 404 |
+| POST | `/api/admin/import/gedcom/{batch_id}/records/{id}/accept` | admin | — | 200 | 401, 404 |
+| POST | `/api/admin/import/gedcom/{batch_id}/records/{id}/reject` | admin | — | 200 | 401, 404 |
+| POST | `/api/admin/import/gedcom/{batch_id}/records/{id}/merge` | admin | `{ target_person_id }` | 200 | 401, 404 |
+
+### Merge Endpoints
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| GET | `/api/admin/duplicates` | admin | — | 200: `[{ person_a, person_b, confidence, match_reason }]` | 401 |
+| POST | `/api/admin/merge` | admin | `{ survivor_id, merged_id, field_choices: { field: "survivor" or "merged" } }` | 200: merged PersonDetail | 401, 404, 409 |
+
+### Agent API Key Management
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| POST | `/api/admin/agent-keys` | admin | `{ name, scope, person_id, expires_at? }` | 201: `{ id, key: "fbk_...", key_prefix, scope }` — key shown ONCE | 401 |
+| GET | `/api/admin/agent-keys` | admin | — | 200: `[{ id, name, key_prefix, scope, person_id, last_used, revoked }]` | 401 |
+| DELETE | `/api/admin/agent-keys/{id}` | admin | — | 204 (revokes key) | 401, 404 |
+
+### Approval Endpoints
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| GET | `/api/approvals` | member | — | 200: `[ApprovalRequest]` (filtered to requests where user is a voter) | 401 |
+| POST | `/api/approvals/{id}/vote` | member (must be in required_voters) | `{ vote: "approve" or "reject" }` | 200: `{ status, votes_received, votes_needed }` | 401, 403, 404 |
+
+### SSE Endpoint
+
+| Method | Path | Auth | Response |
+|--------|------|------|----------|
+| GET | `/api/events` | member | SSE stream: `event: new_moment`, `event: new_reaction`, `event: new_comment`, `event: notification` |
+
+### Envelope Inbound Webhook
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| POST | `/api/inbound/envelope` | HMAC signature (`X-Envelope-Signature` header, SHA-256 of body + `ENVELOPE_WEBHOOK_SECRET`) | `{ from: str, subject: str, text_body: str, attachments: [{ filename, content_type, url }] }` | 200 | 400, 401 (bad signature) |
+
+**Flow:** Envelope receives email to family@martin.fm → calls this webhook → Family Book extracts photos from attachments, matches sender email to Person, creates Moments.
+
+### PWA Share Target
+
+**Web App Manifest (`manifest.json`):**
+```json
+{
+  "name": "Family Book",
+  "short_name": "Family",
+  "share_target": {
+    "action": "/api/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [{ "name": "media", "accept": ["image/*", "video/*"] }]
+    }
+  }
+}
+```
+
+| Method | Path | Auth | Request | Success | Errors |
+|--------|------|------|---------|---------|--------|
+| POST | `/api/share` | member (session cookie) | multipart: title, text, media files | 302 → `/` with success toast | 401 (→ login, then retry), 400, 413 |
+
+**When user is not logged in:** Redirect to login page with `return_to=/api/share` + stash the shared content in session storage. After login, retry the share.
+
 ### Health Endpoint
 
 | Method | Path | Auth | Response |
 |--------|------|------|----------|
-| GET | `/health` | none | 200: `{ status: "ok", db: "connected", version: "1.0.0" }` |
+| GET | `/health` | none | 200: `{ status: "ok", db: "connected", version: "1.0.0", persons_count: N }` |
 
 ---
 
@@ -503,6 +806,15 @@ No SPA framework. No React. No Vue. Vanilla HTML + HTMX + one D3 island.
 | `/admin/relationships` | admin | Relationship manager — add/edit parent-child + partnerships | Server + HTMX |
 | `/admin/backup` | admin | Backup/export controls | Server + HTMX |
 | `/admin/import/whatsapp` | admin | WhatsApp group export upload + name mapping | Server + HTMX |
+| `/admin/import/messenger` | admin | Messenger export upload + name mapping | Server + HTMX |
+| `/admin/import/gedcom` | admin | GEDCOM upload + staged review | Server + HTMX |
+| `/admin/duplicates` | admin | Duplicate detection + merge UI | Server + HTMX |
+| `/admin/agent-keys` | admin | Agent API key management | Server + HTMX |
+| `/memorial/{id}` | member | Memorial page for deceased person | Server + HTMX |
+| `/profile/memorial` | member | Pre-plan your own memorial | Server + HTMX |
+| `/birthdays` | member | Birthday calendar (monthly view) | Server + HTMX |
+| `/map` | member | World map with family pins (Leaflet) | Server + Leaflet |
+| `/people/{id}/card` | member | Person card fragment (loaded into sidebar via HTMX) | Server fragment |
 
 ### Tree Visualization (D3)
 
@@ -837,6 +1149,72 @@ Email     ←→  (direct, no bridge needed)  │
 
 **The hub-and-spoke principle:**
 Family Book is the hub. Matrix is the spoke infrastructure. Each family member participates from their preferred platform. Content converges in the archive. Notifications fan out through the bridges. No single platform failure kills the system.
+
+**Matrix integration contract (how Family Book talks to Matrix):**
+
+Family Book runs a Matrix client (bot) that:
+1. Joins the family room(s) on startup
+2. Listens for `m.room.message` events with `msgtype: m.image`, `m.video`, `m.audio`, `m.text`
+3. Downloads media via Matrix's `/_matrix/media/v3/download/{server}/{mediaId}`
+4. Maps Matrix user ID → Person record via `ExternalIdentity(provider=matrix, external_id=@user:server)`
+5. Creates Moment + Media records from bridged messages
+6. For outbound: posts `m.room.message` events to the family room; bridges fan out to each platform
+7. For reactions: listens for `m.reaction` events; maps to MomentReaction
+
+**Room-to-family mapping:** One Matrix room = one Family Book instance. Room ID stored in `MATRIX_FAMILY_ROOM` env var. Multiple rooms can be configured for separate family branches.
+
+**Idempotency:** Matrix event IDs are stored in `ExternalIdentity(provider=matrix, external_id=event_id)` to prevent duplicate Moment creation on reconnection.
+
+**Docker Compose (production topology):**
+
+```yaml
+# docker-compose.yml
+services:
+  familybook:
+    build: .
+    ports: ["${PORT:-8000}:8000"]
+    volumes: ["./data:/data"]
+    env_file: .env
+    depends_on: [conduit]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      retries: 3
+
+  conduit:
+    image: matrixconduit/matrix-conduit:latest
+    volumes: ["./conduit-data:/var/lib/matrix-conduit"]
+    environment:
+      CONDUIT_SERVER_NAME: martin.fm
+      CONDUIT_DATABASE_BACKEND: rocksdb
+      CONDUIT_PORT: 6167
+      CONDUIT_ALLOW_REGISTRATION: "false"
+    ports: ["6167:6167"]
+
+  mautrix-whatsapp:
+    image: dock.mau.dev/mautrix/whatsapp:latest
+    volumes: ["./mautrix-whatsapp:/data"]
+    depends_on: [conduit]
+
+  mautrix-telegram:
+    image: dock.mau.dev/mautrix/telegram:latest
+    volumes: ["./mautrix-telegram:/data"]
+    depends_on: [conduit]
+
+  mautrix-signal:
+    image: dock.mau.dev/mautrix/signal:latest
+    volumes: ["./mautrix-signal:/data"]
+    depends_on: [conduit]
+
+  mautrix-meta:
+    image: dock.mau.dev/mautrix/meta:latest
+    volumes: ["./mautrix-meta:/data"]
+    depends_on: [conduit]
+```
+
+**Service bring-up order:** Conduit → Bridges → Family Book. Each bridge has its own `config.yaml` in its volume. Bridge config is a one-time setup: register the bridge user with Conduit, authenticate with the platform (WhatsApp QR scan, Telegram auth, etc.).
+
+**Railway note:** Running Matrix + bridges on Railway requires multiple services or a single Docker Compose service. Alternative: run Conduit + bridges on a $5 VPS, Family Book on Railway, connected via public Matrix federation or private network.
 
 **Fallback without Matrix:**
 If Matrix bridges prove unreliable for a specific platform, Family Book can still fall back to direct integrations (Telegram Bot API, Twilio SMS, Envelope email) for that channel. Matrix is the preferred path, not the only path.
@@ -1693,6 +2071,19 @@ Railway is the Phase 1 host. Not because it's "self-hosted" (it isn't — be hon
 | ENVELOPE_API_URL | str | no | — | Alternative to SMTP: use Envelope API for sending magic links |
 | ENVELOPE_API_KEY | str | no | — | |
 | ADMIN_EMAILS | str | no | — | Comma-separated. Persons with these emails get is_admin=true on first login. |
+| ENVELOPE_WEBHOOK_SECRET | str | no | — | HMAC secret for inbound email webhook. Generate: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| TWILIO_ACCOUNT_SID | str | no | — | For SMS/MMS notifications (US/CA) |
+| TWILIO_AUTH_TOKEN | str | no | — | |
+| TWILIO_PHONE_NUMBER | str | no | — | E.164 format. Twilio number for sending. |
+| TELEGRAM_BOT_TOKEN | str | no | — | For Telegram bot notifications |
+| WHATSAPP_BUSINESS_PHONE_ID | str | no | — | WhatsApp Business API phone number ID |
+| WHATSAPP_BUSINESS_TOKEN | str | no | — | WhatsApp Business API access token |
+| SIGNAL_BRIDGE_URL | str | no | — | OpenClaw Signal bridge endpoint |
+| MATRIX_HOMESERVER | str | no | `http://localhost:6167` | Conduit homeserver URL |
+| MATRIX_BOT_USER | str | no | — | e.g., `@familybook:martin.fm` |
+| MATRIX_BOT_PASSWORD | str | no | — | |
+| MATRIX_FAMILY_ROOM | str | no | — | Room ID for the main family room |
+| OPENROUTER_API_KEY | str | no | — | For offline locale generation script ONLY |
 | LOG_LEVEL | str | no | INFO | |
 | PORT | int | no | 8000 | Railway sets this automatically |
 
@@ -1752,11 +2143,11 @@ Phase 1: Railway auto-subdomain is fine. Tyler decides the final domain (`martin
 
 ---
 
-## Seed Data
+## Seed Data (Manual Fallback)
 
-### Initial Tree Structure
+The primary bootstrap is WhatsApp group export ingestion. This JSON seed file is a **fallback/supplement** for people or relationships not captured in WhatsApp exports, or for initial testing before any import.
 
-Tyler and Yuliya populate the initial family tree as a JSON seed file: `data/family_tree.json`.
+### Initial Tree Structure (optional)
 
 ```json
 {
