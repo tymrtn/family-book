@@ -1339,13 +1339,151 @@ MM/DD/YY, HH:MM - Contact Name: IMG-20260315-WA0001.jpg (file attached)
 | Timestamps | Message timestamp | Original date/time for backdating Moments |
 | Message text | Message body | Optional: import as Moment captions or discard (admin choice) |
 
+### Parser Edge Cases (Comprehensive)
+
+WhatsApp exports are messy in the real world. The parser must handle all of these without crashing or silently dropping data.
+
+#### Date Format Detection
+
+WhatsApp uses the DEVICE locale for timestamps, not a consistent format. The same group exported by two different phones produces different date formats.
+
+| Device Locale | Format | Example |
+|--------------|--------|---------|
+| US English | MM/DD/YY, HH:MM | 03/15/26, 14:30 |
+| UK/EU English | DD/MM/YYYY, HH:MM:SS | 15/03/2026, 14:30:00 |
+| Spanish | DD/MM/YY, HH:MM | 15/03/26, 14:30 |
+| Russian | DD.MM.YYYY, HH:MM | 15.03.2026, 14:30 |
+| German | DD.MM.YY, HH:MM:SS | 15.03.26, 14:30:00 |
+| 12-hour clock | MM/DD/YY, 2:30 PM | 03/15/26, 2:30 PM |
+| 24-hour clock | DD/MM/YYYY, 14:30 | 15/03/2026, 14:30 |
+
+**Detection strategy:**
+1. Scan first 50 messages for date patterns
+2. If any date has day > 12 in the first position → DD/MM format confirmed
+3. If any date has month > 12 in the first position → MM/DD format confirmed  
+4. If ambiguous (all dates 1-12 in both positions) → ask admin to confirm during import
+5. Store detected format in `WhatsappImportBatch.date_format` for consistency
+
+#### Multi-Line Messages
+
+Messages can span multiple lines. The parser must distinguish "continuation of previous message" from "new message."
+
+```
+[15/03/2026, 14:30:00] Tyler: This is the first line
+of a message that spans
+multiple lines
+
+[15/03/2026, 14:31:00] Yuliya: And this is a new message
+```
+
+**Rule:** A new message starts with a line matching the timestamp + sender pattern. All other lines are continuations of the previous message. The regex must be anchored to the detected date format.
+
+#### Media References
+
+Different WhatsApp versions reference attached media differently:
+
+```
+# iOS style:
+[15/03/2026, 14:30:00] Tyler: <attached: IMG-20260315-WA0042.jpg>
+
+# Android style:  
+15/03/26, 14:30 - Tyler: IMG-20260315-WA0042.jpg (file attached)
+
+# With caption (iOS):
+[15/03/2026, 14:30:00] Tyler: Look at this! <attached: IMG-20260315-WA0042.jpg>
+
+# With caption (Android):
+15/03/26, 14:30 - Tyler: Look at this!
+15/03/26, 14:30 - Tyler: IMG-20260315-WA0042.jpg (file attached)
+```
+
+**Rule:** Extract media filename from the pattern. Match to files in the .zip. If caption exists on the same line or on the immediately preceding line from the same sender within 60 seconds, associate it as the Moment caption.
+
+#### System Messages (not user content)
+
+```
+[15/03/2026, 14:30:00] Tyler added Dmitri
+[15/03/2026, 14:31:00] Dmitri left
+[15/03/2026, 14:32:00] Tyler changed the group description
+[15/03/2026, 14:33:00] Tyler changed this group's icon
+[15/03/2026, 14:34:00] Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
+[15/03/2026, 14:35:00] Tyler changed the subject from "Family" to "Martin Family"
+[15/03/2026, 14:36:00] You were added
+[15/03/2026, 14:37:00] This message was deleted
+[15/03/2026, 14:38:00] Missed voice call
+[15/03/2026, 14:39:00] Missed video call
+```
+
+**Rule:** Detect system messages by checking if the "sender" part matches known system patterns (no colon after name, or specific keywords like "added", "left", "changed", "end-to-end encrypted", "was deleted", "Missed"). System messages are logged in import metadata but NOT created as Moments.
+
+#### Deleted Messages
+
+```
+[15/03/2026, 14:37:00] Tyler: This message was deleted
+[15/03/2026, 14:37:00] Tyler: You deleted this message
+```
+
+**Rule:** Skip. Don't create a Moment for deleted messages.
+
+#### Emoji-Only Messages
+
+```
+[15/03/2026, 14:30:00] Бабушка: ❤️❤️❤️
+[15/03/2026, 14:31:00] Tyler: 😂
+```
+
+**Rule:** Import as text-only Moments. They're valid family communication. Бабушка sending three hearts IS a Moment.
+
+#### Contact Cards & Location Shares
+
+```
+[15/03/2026, 14:30:00] Tyler: <attached: 00000042.vcf>
+[15/03/2026, 14:31:00] Tyler: location: https://maps.google.com/?q=40.4168,-3.7038
+```
+
+**Rule:** .vcf files → skip (not a Moment). Location shares → import as text Moment with location data extracted if possible.
+
+#### Voice Notes & Audio
+
+```
+[15/03/2026, 14:30:00] Tyler: <attached: PTT-20260315-WA0001.opus>
+[15/03/2026, 14:31:00] Tyler: <attached: AUD-20260315-WA0001.mp3>
+```
+
+**Rule:** Import audio files. Create Moment with `kind=audio`. Store the file. Optional playback in the archive. Voice notes from Бабушка are precious — don't discard them.
+
+#### Duplicate Handling Across Multiple Exports
+
+When Tyler exports the same group multiple times (quarterly), photos will overlap.
+
+**Rule:** Dedup by:
+1. SHA-256 file hash (primary — catches exact duplicates)
+2. Filename + timestamp (secondary — catches re-encoded duplicates)
+3. If same sender + same timestamp + similar filename → flag as potential duplicate, don't auto-import, show in admin review
+
+#### Character Encoding
+
+WhatsApp exports use UTF-8 but some older exports or exports from older phones may have encoding issues.
+
+**Rule:** Read as UTF-8. If decode fails, try UTF-8 with BOM, then latin-1 as fallback. Log any encoding errors with line numbers for admin review.
+
+#### Very Large Exports
+
+A family group with 5+ years of history could have 50,000+ messages and thousands of photos.
+
+**Rule:**
+- Parse in streaming mode (don't load entire file into memory)
+- Process in batches of 100 messages
+- Show progress bar in admin UI during import
+- Allow import to be paused and resumed
+- Time estimate displayed: "Processing 47,000 messages... ~3 minutes remaining"
+
 ### Limitations
 
 - **No phone numbers in export.** Contact names only. Tyler must manually map names to people.
 - **Media limit:** WhatsApp exports ~10,000 most recent messages with media, ~40,000 without. For large groups with years of history, multiple exports may be needed (or use the GDPR account data export for full history).
-- **Date format varies** by device locale. Parser must handle both DD/MM/YYYY and MM/DD/YY formats.
 - **Duplicate media:** Same photo may appear in multiple exports. Dedup by file hash (SHA-256).
-- **Voice notes (.opus):** Import but flag as audio, not photo/video. Optional playback in Moments.
+- **Voice notes (.opus):** Imported as audio Moments. Precious family content — never discarded.
 
 ### Admin Mapping UI
 
