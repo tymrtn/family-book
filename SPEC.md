@@ -771,13 +771,48 @@ Grandparents will NOT sign into a website every day. They open WhatsApp. They ch
 
 **The website is the archive. The experience for grandparents is push notifications with actual content — not links.**
 
-#### Push Channels (by preference, configured per person)
+#### Push Channels — Global Delivery Router
 
-| Channel | Content | Frequency | Interaction |
-|---------|---------|-----------|-------------|
-| **SMS/MMS** | Photo + caption sent directly as MMS. Grandma sees the baby photo IN her texts. | Real-time (new Moments) + daily digest option | Reply with emoji → becomes reaction in Family Book |
-| **Email** | Rich HTML digest with embedded photos. "This week in your family: 5 new photos." | Weekly digest + immediate for milestones (new baby, death) | Click "❤️" link → registers reaction |
-| **Telegram bot** | Photo + caption + inline reaction buttons | Real-time | Tap button → reaction |
+Family Book must deliver rich media notifications to family members across every continent. No single channel works globally. The system routes to the best channel per person based on their country + preference.
+
+| Channel | Coverage | Content | Cost | Interaction |
+|---------|----------|---------|------|-------------|
+| **MMS** (Twilio) | 🇺🇸🇨🇦 only | Photo + caption in native texts | ~$0.02/msg | Reply emoji → reaction |
+| **WhatsApp Business** | 🌍 ~80% global (LatAm, Europe, Africa, Asia) | Photo + caption + reaction buttons | ~$0.005-0.08/msg | Reply emoji → reaction |
+| **Telegram bot** | 🌍 strong in Russia/E.Europe, growing globally | Photo + caption + inline buttons | FREE | Tap button → reaction |
+| **Email** | 🌍 100% (universal fallback) | Rich HTML digest with embedded photos | ~$0.0001/email | Click reaction link → reaction |
+
+**Routing logic (per person, configured once by admin):**
+
+| Person's preference | Primary | Fallback |
+|--------------------|---------|----------|
+| `push_channel = auto` | Route by country: US/CA → MMS, LatAm/Europe/Africa → WhatsApp, Russia → Telegram | Email |
+| `push_channel = whatsapp` | WhatsApp Business API | Email |
+| `push_channel = telegram` | Telegram bot | Email |
+| `push_channel = sms` | SMS/MMS (MMS if US/CA, SMS+link if international) | Email |
+| `push_channel = email` | Email only | — |
+
+**Auto-routing by country (when `push_channel = auto`):**
+
+| Country/Region | Auto-routes to | Why |
+|---------------|---------------|-----|
+| US, Canada | MMS | Native text messaging with photos |
+| Latin America, Western Europe, Africa, Middle East, South/SE Asia | WhatsApp | 80%+ penetration |
+| Russia, Eastern Europe, Central Asia | Telegram | Dominant platform, free API |
+| China | Email (WeChat integration deferred) | WeChat API is a separate world |
+| Japan | Email (LINE integration deferred) | LINE dominant but API complex |
+| South Korea | Email (KakaoTalk deferred) | KakaoTalk dominant but API complex |
+| Fallback / Unknown | Email | Always works |
+
+**WhatsApp Business API considerations:**
+- Requires approved message templates for outbound notifications
+- Per-message cost varies by country (India cheapest, EU most expensive)
+- 24-hour conversation window: first message needs approved template, replies within 24h are cheaper
+- Needs WhatsApp Business account registration + Meta verification
+- This is the MOST important integration after email — covers the largest global audience
+- Research needed: current pricing tiers, template approval process, monthly costs for a family of 50
+
+**The principle:** Family Book doesn't care HOW the notification reaches grandma. It cares THAT it reaches her, with the photo, and she can react. The router abstracts the channel. Adding new channels later (LINE, WeChat, RCS) is just a new adapter in the router.
 
 #### Two-Way Reactions via Push
 
@@ -791,9 +826,11 @@ Grandma doesn't need to log in to react. She reacts WHERE she already is:
 
 | Setting | Options | Default |
 |---------|---------|---------|
-| `push_channel` | sms, email, telegram, none | none (admin configures) |
-| `push_phone` | E.164 phone number | from Person.contact_* |
+| `push_channel` | auto, whatsapp, telegram, sms, email, none | auto |
+| `push_phone` | E.164 phone number | from Person.contact_whatsapp or contact_signal |
 | `push_email` | email address | from Person.contact_email |
+| `push_telegram_id` | Telegram user ID | from linked Telegram account |
+| `push_whatsapp` | E.164 phone number (WhatsApp-registered) | from Person.contact_whatsapp |
 | `push_frequency` | realtime, daily_digest, weekly_digest | weekly_digest |
 | `push_milestones` | bool — always push births, deaths, marriages regardless of frequency | true |
 
