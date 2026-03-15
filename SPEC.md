@@ -1602,13 +1602,34 @@ This is the inverse of how every smart assistant works today (you upload your co
 
 ---
 
+## Open Source + Business Model
+
+Family Book is a **pure open-source project.** MIT or AGPL license, free forever. A gift to the world to push for better data sovereignty and privacy in a world fucked by big tech piracy and lechery.
+
+**No SaaS. No subscriptions. No "free tier with upgrade."**
+
+| Revenue Stream | Description |
+|---------------|-------------|
+| Consulting | Help families and organizations set up their own Family Book instance. Remote setup, domain config, data migration, platform bridge configuration. |
+| Managed hosting | Optional: run a Family Book instance for families who don't want to self-host. Flat monthly fee covers hosting + messaging API costs. |
+| Enterprise | Organizations (churches, cultural groups, diaspora communities) that want Family Book for their community. Custom deployment + training. |
+
+The software is free. The expertise to set it up well is the service. Same model as WordPress (before it got weird), Nextcloud, and Matrix/Element.
+
+**Why open source is the right choice:**
+- Data sovereignty software MUST be auditable. "Trust us" is not a privacy strategy.
+- Families need to know the software will outlive any company. MIT-licensed code can't be taken away.
+- The best way to build a movement for family data sovereignty is to give away the tools.
+- Community contributions improve the platform for everyone.
+- Consulting revenue scales with adoption. More installs = more families that need help.
+
 ## Non-Goals
 
 - This is NOT a social network replacement
 - This is NOT a genealogy research tool (no Ancestry.com integration)
 - This is NOT public-facing — invite-only by design
 - No user-generated content moderation needed (it's family)
-- No monetization. Ever.
+- No venture-funded growth metrics. No MAU. No engagement optimization.
 - No claim of "self-hosted" when running on Railway — it's Tyler's account, not Tyler's hardware
 - No runtime LLM calls in production
 
