@@ -765,6 +765,81 @@ Content flows INTO Family Book through multiple automated pipelines. Tyler sets 
 6. If sender can't be matched → queue for admin review
 7. Moment appears in feed. SSE push notifies active viewers.
 
+### Grandparent Experience (Push-First Design)
+
+Grandparents will NOT sign into a website every day. They open WhatsApp. They check texts. They look at email. Family Book has to **come to them**.
+
+**The website is the archive. The experience for grandparents is push notifications with actual content — not links.**
+
+#### Push Channels (by preference, configured per person)
+
+| Channel | Content | Frequency | Interaction |
+|---------|---------|-----------|-------------|
+| **SMS/MMS** | Photo + caption sent directly as MMS. Grandma sees the baby photo IN her texts. | Real-time (new Moments) + daily digest option | Reply with emoji → becomes reaction in Family Book |
+| **Email** | Rich HTML digest with embedded photos. "This week in your family: 5 new photos." | Weekly digest + immediate for milestones (new baby, death) | Click "❤️" link → registers reaction |
+| **Telegram bot** | Photo + caption + inline reaction buttons | Real-time | Tap button → reaction |
+
+#### Two-Way Reactions via Push
+
+Grandma doesn't need to log in to react. She reacts WHERE she already is:
+
+- **SMS:** Reply "❤️" or "😂" → Family Book parses the emoji → creates MomentReaction
+- **Email:** Click a reaction link at the bottom of the digest → registers reaction via API
+- **Telegram:** Tap inline button (❤️ 😂 🎉) → callback creates reaction
+
+#### Push Notification Preferences (per person)
+
+| Setting | Options | Default |
+|---------|---------|---------|
+| `push_channel` | sms, email, telegram, none | none (admin configures) |
+| `push_phone` | E.164 phone number | from Person.contact_* |
+| `push_email` | email address | from Person.contact_email |
+| `push_frequency` | realtime, daily_digest, weekly_digest | weekly_digest |
+| `push_milestones` | bool — always push births, deaths, marriages regardless of frequency | true |
+
+Admin (Tyler) configures push preferences for each family member. Family members can later adjust their own via profile settings.
+
+#### The "Same Space" Problem
+
+WhatsApp groups work because everyone is there together — reacting, replying, present. Family Book's web feed will feel empty compared to a buzzing group chat.
+
+**Solution:** The push notifications CREATE the "same space" feeling:
+- Grandma gets MMS of baby photo → hearts it via SMS reply
+- Cousin Dmitri gets Telegram notification → reacts with 🎉
+- Tyler sees both reactions appear in the Family Book feed
+- Everyone is participating from their preferred platform, but the reactions converge in one place
+
+The website shows the aggregated engagement. The EXPERIENCE happens on each person's preferred channel. Family Book is the **hub** that connects platforms, not a destination that replaces them.
+
+### Grandparent Roles (Matriarch/Patriarch)
+
+Grandparents aren't just consumers — they're co-organizers and privacy guardians for their branch.
+
+| Permission | Description |
+|-----------|-------------|
+| Branch curator | Approve/hide photos of grandchildren in their branch. "This photo is too private for cousins." |
+| Family historian | Add context to old photos, write bios for deceased relatives, annotate the tree with stories. "This is your дедушка at age 20 in Leningrad." |
+| Branch welcomer | Send invites to family members on their side. Onboard their own relatives. |
+| Privacy guardian | Set default visibility for their branch's content. "Grandchildren's photos are immediate family only." |
+
+**Implementation:** New role `branch_admin` with scope limited to Person records within their branch. Not full admin — can't delete people, can't change tree structure outside their branch, can't access system settings. But within their branch, they have meaningful authority.
+
+### Family Governance (Lightweight Consent Model)
+
+Not everything needs a vote. Most actions are individual. But decisions about others require consent from the people affected. Graph distance determines who has standing.
+
+| Decision | Who Votes | Threshold |
+|----------|-----------|-----------|
+| Adding a minor's photos | Both parents | Both must approve |
+| Memorial creation (when someone dies) | Spouse + children | Majority of immediate family |
+| Estrangement / hiding someone | Immediate family of the person | Majority |
+| Re-adding an ex after reconciliation | Both parties | Both must approve |
+| Escalating content visibility (private → extended family) | Subject (or subject's parents if minor) | Subject approves |
+
+**Everything else is individual:** posting your own photos, editing your own bio, reacting, commenting. No vote needed.
+
+**Principle:** You control your own data. Decisions about others require consent from the people the graph says are affected.
+
 ### Navigation
 
 | Icon | Route | Label |
