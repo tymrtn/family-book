@@ -1,0 +1,41 @@
+[project]
+name = "family-book"
+version = "0.1.0"
+description = "Private, self-hosted family tree and archive"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+    "sqlalchemy>=2.0,<3",
+    "alembic>=1.14,<2",
+    "pydantic-settings>=2.7,<3",
+    "httpx>=0.28,<1",
+    "cryptography>=44,<45",
+    "python-multipart>=0.0.18,<1",
+    "jinja2>=3.1,<4",
+    "aiofiles>=24,<25",
+    "aiosqlite>=0.20,<1",
+    "greenlet>=3.1,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<1",
+    "ruff>=0.9,<1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100

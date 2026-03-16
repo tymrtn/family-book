@@ -1,0 +1,169 @@
+{
+  "persons": [
+    {
+      "id": "e83ba062-d14e-4a8d-b821-d0df4fcf43db",
+      "first_name": "Our",
+      "last_name": "Family",
+      "is_root": true,
+      "is_admin": false,
+      "source": "manual",
+      "visibility": "visible"
+    },
+    {
+      "id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "first_name": "Tyler",
+      "last_name": "Martin",
+      "gender": "male",
+      "residence_place": "Madrid, Spain",
+      "residence_country_code": "ES",
+      "branch": "martin",
+      "is_admin": true,
+      "is_root": false,
+      "languages": ["en", "es"],
+      "source": "manual"
+    },
+    {
+      "id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "first_name": "Yuliya",
+      "last_name": "Semesock",
+      "gender": "female",
+      "residence_place": "Madrid, Spain",
+      "residence_country_code": "ES",
+      "branch": "yuliya",
+      "is_admin": true,
+      "is_root": false,
+      "languages": ["ru", "en", "es"],
+      "source": "manual"
+    },
+    {
+      "id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "first_name": "Robert",
+      "last_name": "Martin",
+      "gender": "male",
+      "residence_place": "Vancouver, Canada",
+      "residence_country_code": "CA",
+      "branch": "martin",
+      "is_admin": false,
+      "is_root": false,
+      "source": "manual"
+    },
+    {
+      "id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "first_name": "Patricia",
+      "last_name": "Martin",
+      "gender": "female",
+      "residence_place": "Vancouver, Canada",
+      "residence_country_code": "CA",
+      "branch": "martin",
+      "is_admin": false,
+      "is_root": false,
+      "source": "manual"
+    },
+    {
+      "id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "first_name": "Sarah",
+      "last_name": "Martin",
+      "gender": "female",
+      "residence_place": "Victoria, Canada",
+      "residence_country_code": "CA",
+      "branch": "martin",
+      "is_admin": false,
+      "is_root": false,
+      "source": "manual"
+    },
+    {
+      "id": "074e5429-4212-4a14-9f63-5106890c0ee9",
+      "first_name": "Emma",
+      "last_name": "Martin",
+      "gender": "female",
+      "residence_place": "Victoria, Canada",
+      "residence_country_code": "CA",
+      "branch": "martin",
+      "is_admin": false,
+      "is_root": false,
+      "source": "manual"
+    },
+    {
+      "id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
+      "first_name": "Natasha",
+      "last_name": "Semesock",
+      "nickname": "Бабушка Наташа",
+      "patronymic": "Ivanovna",
+      "name_display_order": "patronymic",
+      "gender": "female",
+      "residence_place": "Moscow, Russia",
+      "residence_country_code": "RU",
+      "branch": "yuliya",
+      "is_admin": false,
+      "is_root": false,
+      "languages": ["ru"],
+      "source": "manual"
+    }
+  ],
+  "parent_child": [
+    {
+      "id": "9c16d251-f627-41b9-a90e-a6d7fa91b500",
+      "parent_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "child_id": "e83ba062-d14e-4a8d-b821-d0df4fcf43db",
+      "kind": "biological"
+    },
+    {
+      "id": "83b7a142-12ee-4e85-b25d-a2767045d9c1",
+      "parent_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "child_id": "e83ba062-d14e-4a8d-b821-d0df4fcf43db",
+      "kind": "biological"
+    },
+    {
+      "id": "a1b2c3d4-0001-0000-0000-000000000001",
+      "parent_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "child_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "kind": "biological"
+    },
+    {
+      "id": "a1b2c3d4-0002-0000-0000-000000000002",
+      "parent_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "child_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "kind": "biological"
+    },
+    {
+      "id": "a1b2c3d4-0003-0000-0000-000000000003",
+      "parent_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "child_id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "kind": "biological"
+    },
+    {
+      "id": "a1b2c3d4-0004-0000-0000-000000000004",
+      "parent_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "child_id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "kind": "biological"
+    },
+    {
+      "id": "a1b2c3d4-0005-0000-0000-000000000005",
+      "parent_id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "child_id": "074e5429-4212-4a14-9f63-5106890c0ee9",
+      "kind": "biological"
+    },
+    {
+      "id": "a1b2c3d4-0006-0000-0000-000000000006",
+      "parent_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
+      "child_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "kind": "biological"
+    }
+  ],
+  "partnerships": [
+    {
+      "id": "b1c2d3e4-0001-0000-0000-000000000001",
+      "person_a_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "person_b_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "kind": "married",
+      "status": "active"
+    },
+    {
+      "id": "b1c2d3e4-0002-0000-0000-000000000002",
+      "person_a_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "person_b_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "kind": "married",
+      "status": "active"
+    }
+  ]
+}
