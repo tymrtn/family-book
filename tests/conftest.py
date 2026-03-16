@@ -23,6 +23,7 @@ from app.routes.persons import router as persons_router
 from app.routes.relationships import router as relationships_router
 from app.routes.tree import router as tree_router
 from app.routes.media import router as media_router
+from app.routes.moments import router as moments_router
 from app.services.auth_service import create_session
 
 
@@ -155,6 +156,7 @@ def phase1_app():
     application.include_router(relationships_router)
     application.include_router(tree_router)
     application.include_router(media_router)
+    application.include_router(moments_router)
     return application
 
 
@@ -208,14 +210,28 @@ async def admin_client(seeded_db: AsyncSession, client: AsyncClient):
 
 
 @pytest_asyncio.fixture
-async def member_client(seeded_db: AsyncSession, client: AsyncClient):
-    """Test client authenticated as Jane (member, not admin)."""
+async def member_client(seeded_db: AsyncSession, session_factory, app_under_test: FastAPI):
+    """Test client authenticated as Jane (member, not admin) — independent from admin_client."""
+
+    async def override_get_db():
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    app_under_test.dependency_overrides[get_db] = override_get_db
+
     token = await create_session(
         seeded_db,
         person_id="member-00-0000-0000-000000000005",
         auth_method="magic_link",
     )
     await seeded_db.commit()
-    client.cookies.set("session", token)
-    yield client
-    client.cookies.clear()
+
+    transport = ASGITransport(app=app_under_test)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ac.cookies.set("session", token)
+        yield ac

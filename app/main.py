@@ -12,6 +12,7 @@ from app.routes.persons import router as persons_router
 from app.routes.relationships import router as relationships_router
 from app.routes.tree import router as tree_router
 from app.routes.media import router as media_router
+from app.routes.moments import router as moments_router
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     application.include_router(relationships_router)
     application.include_router(tree_router)
     application.include_router(media_router)
+    application.include_router(moments_router)
 
     # Phase 3 routes (infrastructure)
     from app.backup.routes import router as backup_router
