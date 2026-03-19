@@ -291,6 +291,12 @@ Not yet. Self-hosted only. If there's demand, a hosted option may come later.
 
 ---
 
+## Part of the Sovereign Stack
+
+Family Book is part of [**The Sovereign Stack**](https://github.com/tymrtn/sovereign-stack) — a portfolio of tools for personal data sovereignty. Own your lineage, your email, your content, and your physical footprint. Stop renting your digital life.
+
+---
+
 ## License
 
 MIT — do whatever you want with it.
