@@ -1,0 +1,64 @@
+name: "🌳 Show Your Family Tree"
+description: Share your Family Book setup and inspire others!
+title: "[Show & Tell] "
+labels: ["show-and-tell", "community"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We'd love to see how you're using Family Book! Share your setup, tips, or anything cool you've done with it.
+
+        **No personal data required** — share as much or as little as you're comfortable with. Screenshots with blurred names are totally fine.
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your Setup
+      description: How are you running Family Book? (e.g., Railway, Docker on a Pi, VPS, etc.)
+      placeholder: "Running on a Raspberry Pi 4 at home with Docker Compose..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: family-size
+    attributes:
+      label: Family Tree Size
+      description: How many people / generations are in your tree?
+      placeholder: "About 120 people across 5 generations..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: favorite-feature
+    attributes:
+      label: Favorite Feature
+      description: What's the feature you use or love the most?
+      placeholder: "The WhatsApp import was a game-changer for us..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Share a screenshot of your tree, timeline, or anything interesting! (Blur personal info if you prefer.)
+      placeholder: "Drag and drop images here..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggestions
+    attributes:
+      label: What Would Make It Better?
+      description: Any feature requests or improvements you'd love to see?
+      placeholder: "It would be great if..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Sharing Consent
+      options:
+        - label: I confirm that any screenshots or data I share do not contain personal information I haven't consented to sharing.
+          required: true
