@@ -5,7 +5,28 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
-[![Deploy on Railway](https://img.shields.io/badge/Deploy-Railway-blueviolet)](https://railway.com)
+
+### Deploy in One Click
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.app/new/template?template=https://github.com/tymrtn/family-book)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/tymrtn/family-book)
+
+Or with Docker:
+```bash
+git clone https://github.com/tymrtn/family-book.git && cd family-book
+cp .env.example .env   # Edit with your values
+docker compose up -d
+# Open http://localhost:8000
+```
+
+---
+
+## 🎮 Live Demo
+
+**→ [family-book-production.up.railway.app](https://family-book-production.up.railway.app)**
+
+Browse a demo family tree with seed data. No sign-up required to explore. This is a live instance running the latest `main` branch with a fictional demo family so you can see what Family Book looks like before deploying your own.
 
 ---
 
@@ -238,17 +259,13 @@ This is an unsolved problem in the self-hosted space. Whoever solves it unlocks 
 
 ## Contributing
 
-Family Book is MIT licensed. Contributions welcome.
+Family Book is MIT licensed. Contributions welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for full details on setting up your dev environment, running tests, and submitting PRs.
 
 ```bash
-# Run tests
-uv run pytest
-
-# Run with auto-reload
-uv run uvicorn app.main:app --reload
-
-# Create a migration
-uv run alembic revision --autogenerate -m "description"
+make dev      # Start dev server with auto-reload
+make test     # Run the test suite
+make seed     # Load demo data
+make migrate  # Run database migrations
 ```
 
 Please read `CLAUDE.md` for architecture rules before submitting PRs.
