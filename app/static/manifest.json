@@ -4,8 +4,8 @@
   "description": "Private family tree and archive",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2d5016",
+  "background_color": "#faf8f5",
+  "theme_color": "#faf8f5",
   "orientation": "any",
   "icons": [
     {

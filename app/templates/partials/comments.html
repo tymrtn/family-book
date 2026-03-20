@@ -9,7 +9,7 @@
 </div>
 {% endfor %}
 {% if not comments %}
-<p class="text-sm text-muted" style="padding:4px 0;">No comments yet</p>
+<p class="text-sm text-muted" style="padding:4px 0; font-style:italic;">No comments yet</p>
 {% endif %}
 
 <form class="comment-form" onsubmit="postComment(event, '{{ moment_id }}')">

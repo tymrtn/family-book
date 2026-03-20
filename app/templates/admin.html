@@ -2,8 +2,11 @@
 {% block title %}{{ t('admin.dashboard') }} — {{ t('app.name') }}{% endblock %}
 
 {% block content %}
-<div class="container-wide" style="padding-top: 16px;">
-  <h1 style="font-family: var(--font-serif); font-size: 1.3rem; margin-bottom: 16px;">{{ t('admin.dashboard') }}</h1>
+<div class="container-wide" style="padding-top: 20px;">
+  <div class="page-header mb-24">
+    <h1 class="page-header__title">{{ t('admin.dashboard') }}</h1>
+    <p class="page-header__subtitle">Manage your family archive</p>
+  </div>
 
   <!-- Stats -->
   <div class="admin-grid mb-24">
@@ -28,7 +31,7 @@
   <!-- Quick Actions -->
   <div class="card mb-16">
     <div class="card__body">
-      <h2 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px;">Quick Actions</h2>
+      <h2 style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; color: var(--brown-dark);">Quick Actions</h2>
       <div class="flex gap-8" style="flex-wrap:wrap;">
         <a href="/admin/people/new" class="btn btn--primary btn--sm">+ Add Person</a>
         <button class="btn btn--secondary btn--sm" onclick="triggerBackup()">{{ t('admin.backup_now') }}</button>
@@ -41,7 +44,7 @@
   {% if pending_persons %}
   <div class="card mb-16">
     <div class="card__body">
-      <h2 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px;">{{ t('admin.pending_approvals') }}</h2>
+      <h2 style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; color: var(--brown-dark);">{{ t('admin.pending_approvals') }}</h2>
       {% for p in pending_persons %}
       <div class="invite-row">
         <span class="invite-row__name">{{ p.display_name }}</span>
@@ -57,7 +60,7 @@
   <!-- Invite Management -->
   <div class="card mb-16">
     <div class="card__body">
-      <h2 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px;">{{ t('admin.invite') }}</h2>
+      <h2 style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; color: var(--brown-dark);">{{ t('admin.invite') }}</h2>
       <div class="form-group">
         <label>Person to invite</label>
         <select class="form-select" id="invite-person-select">
@@ -75,7 +78,7 @@
   <!-- Audit Log -->
   <div class="card mb-16">
     <div class="card__body">
-      <h2 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px;">{{ t('admin.audit_log') }}</h2>
+      <h2 style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; color: var(--brown-dark);">{{ t('admin.audit_log') }}</h2>
       <div id="audit-log"
            hx-get="/partials/audit-log"
            hx-trigger="load"
@@ -126,9 +129,9 @@ async function createInvite() {
     const link = document.createElement('a');
     link.href = url;
     link.textContent = url;
-    link.style.cssText = 'word-break:break-all; color:var(--green-deep);';
+    link.style.cssText = 'word-break:break-all; color:var(--green-deep); font-weight:500;';
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'padding:8px 12px; background:var(--green-pale); border-radius:6px; margin-top:8px;';
+    wrapper.style.cssText = 'padding:12px 16px; background:var(--green-pale); border-radius:12px; margin-top:8px; border:1px solid var(--border-light);';
     wrapper.appendChild(link);
     result.appendChild(wrapper);
   } else {

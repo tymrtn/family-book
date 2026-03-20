@@ -6,9 +6,9 @@
   <title>{% block title %}{{ t('app.name') }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/main.css">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#2d5016">
+  <meta name="theme-color" content="#faf8f5">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   {% block head %}{% endblock %}
 </head>
@@ -16,7 +16,7 @@
   {% if demo_mode %}
   {# Demo mode navigation #}
   <nav class="nav" id="main-nav">
-    <a href="/demo" class="nav__brand">{{ t('app.name') }} <span style="font-size:0.7em; opacity:0.7;">DEMO</span></a>
+    <a href="/demo" class="nav__brand">{{ t('app.name') }} <span class="nav__brand-demo">Demo</span></a>
     <div class="nav__links" id="nav-links">
       <a href="/demo" class="nav__link {% if active_page == 'home' %}nav__link--active{% endif %}">{{ t('nav.moments') }}</a>
       <a href="/demo/tree" class="nav__link {% if active_page == 'tree' %}nav__link--active{% endif %}">{{ t('nav.tree') }}</a>
@@ -26,10 +26,11 @@
     <button class="nav__hamburger" onclick="toggleNav()" aria-label="Menu">&#9776;</button>
   </nav>
 
-  {# Demo banner #}
+  {# Demo banner — warm amber, subtle #}
   <div class="demo-banner" id="demo-banner">
-    <span class="demo-banner__text">You're viewing the demo family. Create your own family to get started.</span>
-    <a href="/login" class="btn btn--primary btn--sm demo-banner__cta">Create Your Family</a>
+    <span class="demo-banner__icon">✨</span>
+    <span class="demo-banner__text">Exploring the demo family</span>
+    <a href="/login" class="btn btn--sm demo-banner__cta">Start Your Own</a>
   </div>
   {% elif current_user %}
   <nav class="nav" id="main-nav">

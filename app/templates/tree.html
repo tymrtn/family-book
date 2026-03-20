@@ -9,10 +9,16 @@
   <div class="tree-controls">
     <button onclick="treeZoomIn()" title="{{ t('tree.zoom_in') }}">+</button>
     <button onclick="treeZoomOut()" title="{{ t('tree.zoom_out') }}">&minus;</button>
-    <button onclick="treeReset()" title="{{ t('tree.reset_view') }}">&#8634;</button>
+    <button onclick="treeReset()" title="{{ t('tree.reset_view') }}">↺</button>
   </div>
 
   <svg id="tree-svg"></svg>
+
+  <!-- Hover tooltip -->
+  <div class="tree-tooltip" id="tree-tooltip">
+    <div class="tree-tooltip__name"></div>
+    <div class="tree-tooltip__year"></div>
+  </div>
 
   <div class="person-sidebar" id="person-sidebar">
     <button class="person-sidebar__close" onclick="closeSidebar()">&times;</button>

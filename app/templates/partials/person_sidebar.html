@@ -1,5 +1,5 @@
-<div style="padding: 16px; text-align:center;">
-  <div class="avatar avatar--xl" style="margin:0 auto 12px;">
+<div style="padding: 24px 20px; text-align:center;">
+  <div class="avatar avatar--xl" style="margin:0 auto 14px;">
     {% if person.photo_url and person.photo_url.startswith('http') %}
     <img src="{{ person.photo_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
     {% elif person.photo_url %}
@@ -8,42 +8,42 @@
     {{ person.display_name[:2] }}
     {% endif %}
   </div>
-  <h2 style="font-family: var(--font-serif); font-size: 1.2rem;">{{ person.display_name }}</h2>
+  <h2 style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.25rem; color: #3e2c1c; letter-spacing:-0.01em;">{{ person.display_name }}</h2>
   {% if person.nickname %}
-  <p style="font-style:italic; color:var(--text-muted);">"{{ person.nickname }}"</p>
+  <p style="font-style:italic; color:var(--text-muted); font-size:0.9rem; margin-top:4px;">"{{ person.nickname }}"</p>
   {% endif %}
   {% if person.residence_country_code %}
-  <p style="font-size:0.9rem; margin-top:4px;">{{ country_flag(person.residence_country_code) }} {{ person.residence_place or '' }}</p>
+  <p style="font-size:0.9rem; margin-top:8px; color:var(--text-muted);">{{ country_flag(person.residence_country_code) }} {{ person.residence_place or '' }}</p>
   {% endif %}
   {% if person.birth_date_raw %}
-  <p class="text-sm text-muted mt-8">{{ person.birth_date_raw }}</p>
+  <p class="text-sm text-muted mt-8" style="font-style:italic;">{{ person.birth_date_raw }}</p>
   {% endif %}
 </div>
 
 {% if person.bio %}
-<div style="padding: 0 16px 12px;">
-  <p class="text-sm">{{ person.bio }}</p>
+<div style="padding: 0 20px 16px;">
+  <p class="text-sm" style="line-height:1.6; color:var(--text);">{{ person.bio }}</p>
 </div>
 {% endif %}
 
 {% if not demo_mode %}
 {% if person.contact_whatsapp or person.contact_telegram or person.contact_email %}
-<div style="padding: 0 16px 16px;">
+<div style="padding: 0 20px 20px;">
   <div class="contact-btns">
     {% if person.contact_whatsapp %}
-    <a href="https://wa.me/{{ person.contact_whatsapp }}" class="contact-btn" target="_blank" rel="noopener">WhatsApp</a>
+    <a href="https://wa.me/{{ person.contact_whatsapp }}" class="contact-btn" target="_blank" rel="noopener">💬 WhatsApp</a>
     {% endif %}
     {% if person.contact_telegram %}
-    <a href="https://t.me/{{ person.contact_telegram }}" class="contact-btn" target="_blank" rel="noopener">Telegram</a>
+    <a href="https://t.me/{{ person.contact_telegram }}" class="contact-btn" target="_blank" rel="noopener">✈️ Telegram</a>
     {% endif %}
     {% if person.contact_email %}
-    <a href="mailto:{{ person.contact_email }}" class="contact-btn">Email</a>
+    <a href="mailto:{{ person.contact_email }}" class="contact-btn">📧 Email</a>
     {% endif %}
   </div>
 </div>
 {% endif %}
 {% endif %}
 
-<div style="padding: 0 16px 16px; text-align:center;">
-  <a href="{{ url_prefix }}/people/{{ person.id }}" class="btn btn--primary btn--sm btn--block">View Full Profile</a>
+<div style="padding: 0 20px 24px; text-align:center;">
+  <a href="{{ url_prefix }}/people/{{ person.id }}" class="btn btn--primary btn--block" style="border-radius: var(--radius-full);">View Full Profile</a>
 </div>

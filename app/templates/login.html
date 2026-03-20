@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ t('auth.login') }} — {{ t('app.name') }}</title>
   <link rel="stylesheet" href="/static/css/main.css">
-  <meta name="theme-color" content="#2d5016">
+  <meta name="theme-color" content="#faf8f5">
 </head>
 <body>
   <div class="auth-page">
     <div class="auth-card">
+      <div style="text-align:center; margin-bottom: 8px; font-size: 2.5rem;">🌳</div>
       <h1 class="auth-card__title">{{ t('app.name') }}</h1>
       <p class="auth-card__subtitle">{{ t('app.tagline') }}</p>
 
@@ -24,9 +25,10 @@
         </button>
       </form>
 
-      <div id="magic-link-success" class="hidden" style="text-align:center; padding: 16px 0;">
-        <p style="font-size: 1.5rem; margin-bottom: 8px;">&#9993;</p>
-        <p>{{ t('auth.check_email') }}</p>
+      <div id="magic-link-success" class="hidden" style="text-align:center; padding: 24px 0;">
+        <p style="font-size: 2rem; margin-bottom: 12px;">✉️</p>
+        <p style="font-family: var(--font-serif); font-size: 1.1rem; color: var(--brown-dark);">Check your email</p>
+        <p class="text-sm text-muted mt-8">{{ t('auth.check_email') }}</p>
       </div>
 
       {% if fb_enabled %}
@@ -36,8 +38,10 @@
       </a>
       {% endif %}
 
-      <div style="margin-top: 24px; text-align: center;">
-        <a href="/demo" style="color: var(--color-sage-600, #6b6054); font-size: 0.9rem; text-decoration: underline;">View Demo</a>
+      <div style="margin-top: 28px; text-align: center;">
+        <a href="/demo" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">
+          ✨ Explore the demo family
+        </a>
       </div>
     </div>
   </div>

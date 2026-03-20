@@ -2,16 +2,18 @@
 {% block title %}{{ t('nav.people') }} — {{ t('app.name') }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 16px;">
+<div class="container" style="padding-top: 20px;">
   <div class="flex-between mb-16">
-    <h1 style="font-family: var(--font-serif); font-size: 1.3rem;">{{ t('nav.people') }}</h1>
+    <div class="page-header">
+      <h1 class="page-header__title">{{ t('nav.people') }}</h1>
+    </div>
     {% if current_user and current_user.is_admin %}
     <a href="/admin/people/new" class="btn btn--primary btn--sm">+ {{ t('person.add') }}</a>
     {% endif %}
   </div>
 
   <div class="search-bar">
-    <span class="search-bar__icon">&#128269;</span>
+    <span class="search-bar__icon">🔍</span>
     <input type="search" placeholder="{{ t('common.search') }}..."
            hx-get="{{ url_prefix }}/partials/people-grid"
            hx-trigger="keyup changed delay:300ms"

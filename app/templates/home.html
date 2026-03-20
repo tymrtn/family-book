@@ -2,11 +2,13 @@
 {% block title %}{{ t('moments.feed') }} — {{ t('app.name') }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 16px; padding-bottom: 16px;">
+<div class="container" style="padding-top: 20px; padding-bottom: 16px;">
   <div class="flex-between mb-16">
-    <h1 style="font-family: var(--font-serif); font-size: 1.3rem;">{{ t('moments.feed') }}</h1>
-    <div class="filter-bar">
-      <select class="form-select" style="width:auto; padding:6px 10px; font-size:0.85rem; border-radius: var(--radius-full);"
+    <div class="page-header">
+      <h1 class="page-header__title">{{ t('moments.feed') }}</h1>
+    </div>
+    <div class="filter-bar" style="margin-bottom:0;">
+      <select class="form-select" style="width:auto; padding:8px 14px; font-size:0.85rem; border-radius: var(--radius-full); border: 1.5px solid var(--border);"
               onchange="filterMoments(this.value)" id="moment-filter">
         <option value="">All</option>
         <option value="photo">{{ t('moments.photo') }}</option>
@@ -22,8 +24,9 @@
     {% endfor %}
     {% if not moments %}
     <div class="empty-state">
-      <div class="empty-state__icon">&#128247;</div>
+      <div class="empty-state__icon">📸</div>
       <p class="empty-state__text">{{ t('moments.no_moments') }}</p>
+      <p class="text-sm text-muted mt-8">Share your first family moment</p>
       {% if not demo_mode %}
       <div class="empty-state__action">
         <button class="btn btn--primary" onclick="document.getElementById('compose-input').focus()">
@@ -41,7 +44,7 @@
        hx-trigger="revealed"
        hx-swap="afterend"
        hx-indicator="#load-more-spinner">
-    <div style="text-align:center; padding: 20px;">
+    <div style="text-align:center; padding: 24px;">
       <div class="spinner" id="load-more-spinner" style="margin: 0 auto;"></div>
     </div>
   </div>
@@ -53,11 +56,11 @@
 {% if not demo_mode %}
 <!-- Compose bar -->
 <div class="compose-bar" id="compose-bar">
-  <label class="compose-bar__photo-btn" for="compose-file">&#128247;</label>
+  <label class="compose-bar__photo-btn" for="compose-file">📷</label>
   <input type="file" id="compose-file" accept="image/*,video/*" multiple onchange="handleComposeFile(this)">
   <input type="text" class="compose-bar__input" id="compose-input"
          placeholder="{{ t('moments.share') }}..." onkeydown="if(event.key==='Enter')submitMoment()">
-  <button class="compose-bar__send" onclick="submitMoment()" aria-label="Send">&#9993;</button>
+  <button class="compose-bar__send" onclick="submitMoment()" aria-label="Send">➤</button>
 </div>
 
 <!-- New moment modal for photo upload -->
@@ -69,10 +72,10 @@
     </div>
     <form id="compose-form" onsubmit="submitMomentWithMedia(event)">
       <div class="modal__body">
-        <div id="compose-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;"></div>
+        <div id="compose-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;"></div>
         <div class="form-group">
           <textarea class="form-textarea" name="body" id="compose-body" rows="2"
-                    placeholder="Say something..."></textarea>
+                    placeholder="Say something about this moment..."></textarea>
         </div>
       </div>
       <div class="modal__footer">
@@ -107,7 +110,7 @@ function handleComposeFile(input) {
     if (f.type.startsWith('image/')) {
       const img = document.createElement('img');
       img.src = URL.createObjectURL(f);
-      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;';
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:12px;';
       preview.appendChild(img);
     }
   }

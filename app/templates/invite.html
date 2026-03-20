@@ -5,22 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ t('auth.invite_welcome') }} — {{ t('app.name') }}</title>
   <link rel="stylesheet" href="/static/css/main.css">
-  <meta name="theme-color" content="#2d5016">
+  <meta name="theme-color" content="#faf8f5">
 </head>
 <body>
   <div class="auth-page">
     <div class="auth-card" style="text-align:center;">
+      <div style="font-size: 2.5rem; margin-bottom: 8px;">🌿</div>
       <h1 class="auth-card__title">{{ t('auth.invite_welcome') }}</h1>
 
       {% if error %}
       <p style="color: var(--danger); margin: 16px 0;">{{ error }}</p>
       {% else %}
       <p class="auth-card__subtitle" style="margin-bottom:16px;">
-        {{ person_name }}
-        {% if branch %}<br><span class="text-sm text-muted" style="text-transform:capitalize;">{{ branch }}</span>{% endif %}
+        <strong style="font-family: var(--font-serif); color: var(--brown-dark);">{{ person_name }}</strong>
+        {% if branch %}<br><span class="text-sm" style="text-transform:capitalize; color:var(--text-light); letter-spacing:0.06em; font-weight:600;">{{ branch }}</span>{% endif %}
       </p>
 
-      <p style="color: var(--text-muted); font-size:0.9rem; margin-bottom: 24px;">
+      <p style="color: var(--text-muted); font-size:0.9rem; margin-bottom: 28px; line-height:1.6;">
         You've been invited to join the family. Confirm to get access to the tree, photos, and moments.
       </p>
 

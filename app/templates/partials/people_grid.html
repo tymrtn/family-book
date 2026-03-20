@@ -1,7 +1,7 @@
 <div class="people-grid">
   {% for p in persons %}
   <a href="{{ url_prefix }}/people/{{ p.id }}" class="person-card-sm">
-    <div class="avatar avatar--lg" style="margin:0 auto 8px;">
+    <div class="avatar avatar--lg" style="margin:0 auto 12px;">
       {% if p.photo_url and p.photo_url.startswith('http') %}
       <img src="{{ p.photo_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
       {% elif p.photo_url %}
@@ -11,7 +11,12 @@
       {% endif %}
     </div>
     <span class="person-card-sm__name">{{ p.display_name }}</span>
-    {% if p.nickname %}<span class="text-sm text-muted">"{{ p.nickname }}"</span>{% endif %}
+    {% if p.nickname %}<span class="person-card-sm__detail">"{{ p.nickname }}"</span>{% endif %}
+    {% if p.birth_date_raw %}
+    <span class="person-card-sm__detail">{{ p.birth_date_raw[:4] if p.birth_date_raw and p.birth_date_raw[:4].isdigit() else '' }}{% if p.residence_place %} · {{ p.residence_place }}{% endif %}</span>
+    {% elif p.residence_place %}
+    <span class="person-card-sm__detail">{{ p.residence_place }}</span>
+    {% endif %}
     {% if p.branch %}<span class="person-card-sm__branch">{{ p.branch }}</span>{% endif %}
     {% if p.residence_country_code %}
     <span class="person-card-sm__country">{{ country_flag(p.residence_country_code) }}</span>

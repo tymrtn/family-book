@@ -3,17 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ t('app.name') }}</title>
+  <title>{{ t('app.name') }} — Your family's story, your terms</title>
   <link rel="stylesheet" href="/static/css/main.css">
-  <meta name="theme-color" content="#2d5016">
+  <meta name="theme-color" content="#faf8f5">
 </head>
 <body>
   <div class="landing">
-    <h1 class="landing__title">{{ t('app.name') }}</h1>
-    <p class="landing__tagline">"{{ t('app.tagline') }}"</p>
-    <div class="landing__actions">
-      <a href="/login" class="btn btn--primary btn--lg">{{ t('nav.login') }}</a>
-      <a href="/demo" class="btn btn--secondary btn--lg">Try the Demo</a>
+    <div class="landing__hero">
+      <div class="landing__icon">🌳</div>
+      <h1 class="landing__title">{{ t('app.name') }}</h1>
+      <p class="landing__tagline">"Your family's story, your terms"</p>
+      <div class="landing__actions">
+        <a href="/demo" class="btn btn--primary btn--lg">Try the Demo</a>
+        <a href="/login" class="btn btn--outline btn--lg">Sign In</a>
+      </div>
+    </div>
+
+    <div class="landing__features">
+      <div class="feature-card">
+        <div class="feature-card__icon">🌿</div>
+        <h3 class="feature-card__title">Family Tree</h3>
+        <p class="feature-card__desc">Visualize your family connections with an interactive tree. Add generations, partnerships, and branches.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card__icon">📸</div>
+        <h3 class="feature-card__title">Moments &amp; Memories</h3>
+        <p class="feature-card__desc">Share photos, milestones, and stories. A living timeline of your family's most treasured moments.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card__icon">🔒</div>
+        <h3 class="feature-card__title">Private &amp; Sovereign</h3>
+        <p class="feature-card__desc">Self-hosted, no ads, no algorithms. Your family's data stays on your server, forever under your control.</p>
+      </div>
+    </div>
+
+    <div class="landing__footer">
+      <p>{{ t('app.name') }} — Private family archive, self-hosted with love.</p>
     </div>
   </div>
 </body>

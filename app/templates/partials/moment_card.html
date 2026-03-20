@@ -12,9 +12,10 @@
     </a>
     <div class="moment__meta">
       <a href="{{ url_prefix }}/people/{{ m.poster.id }}" class="moment__author">{{ m.poster.display_name }}</a>
-      <span class="moment__time">{{ m.occurred_at[:10] if m.occurred_at else '' }}
+      <span class="moment__time">
+        <span class="moment__date-elegant">{{ m.occurred_at[:10] if m.occurred_at else '' }}</span>
         {% if m.source and m.source != 'manual' %}
-        <span class="moment__source">via {{ m.source | replace('_', ' ') | title }}</span>
+        <span class="moment__source">{{ m.source | replace('_', ' ') | title }}</span>
         {% endif %}
       </span>
     </div>
@@ -30,7 +31,9 @@
     </a>
     <div class="moment__meta">
       <a href="{{ url_prefix }}/people/{{ m.about.id }}" class="moment__author">{{ m.about.display_name }}</a>
-      <span class="moment__time">{{ m.occurred_at[:10] if m.occurred_at else '' }}</span>
+      <span class="moment__time">
+        <span class="moment__date-elegant">{{ m.occurred_at[:10] if m.occurred_at else '' }}</span>
+      </span>
     </div>
     {% endif %}
   </div>
@@ -62,7 +65,7 @@
         <img src="{{ media.url }}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;"
              onclick="openLightbox('{{ media.url }}')">
         {% if loop.index == 4 and m.media | length > 4 %}
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;font-weight:600;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;font-weight:600;border-radius:0;">
           +{{ m.media | length - 4 }}
         </div>
         {% endif %}
@@ -105,7 +108,7 @@
   </div>
 
   <!-- Reaction picker (hidden) -->
-  <div class="reaction-picker hidden" id="reaction-picker-{{ m.id }}" style="margin:0 16px 12px;">
+  <div class="reaction-picker hidden" id="reaction-picker-{{ m.id }}" style="margin:0 18px 14px;">
     {% for emoji in ['❤️', '😂', '😢', '🎉', '🙏', '😮'] %}
     <button hx-post="/api/moments/{{ m.id }}/reactions"
             hx-vals='{"emoji": "{{ emoji }}"}'

@@ -2,8 +2,10 @@
 {% block title %}{{ t('nav.settings') }} — {{ t('app.name') }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 16px;">
-  <h1 style="font-family: var(--font-serif); font-size: 1.3rem; margin-bottom: 16px;">{{ t('nav.settings') }}</h1>
+<div class="container" style="padding-top: 20px;">
+  <div class="page-header mb-24">
+    <h1 class="page-header__title">{{ t('nav.settings') }}</h1>
+  </div>
 
   <!-- Language -->
   <div class="settings-section">
@@ -36,7 +38,7 @@
   <div class="settings-section">
     <h2 class="settings-section__title">About</h2>
     <p class="text-sm text-muted">{{ t('app.name') }} v0.1.0</p>
-    <p class="text-sm text-muted">"{{ t('app.tagline') }}"</p>
+    <p class="text-sm" style="font-style:italic; color:var(--text-muted); margin-top:4px;">"{{ t('app.tagline') }}"</p>
     <p class="text-sm text-muted mt-8">A private, self-hosted family tree and archive. No ads. No algorithms. Your data, your server.</p>
   </div>
 </div>

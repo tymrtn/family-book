@@ -1,12 +1,26 @@
-/* Family Book — D3 Tree Visualization */
+/* Family Book — D3 Tree Visualization (warm, family-oriented) */
 
 (function() {
   'use strict';
 
   var svg, g, zoom, treeData;
-  var NODE_RADIUS = 30;
-  var NODE_SPACING_X = 100;
-  var NODE_SPACING_Y = 140;
+  var NODE_RADIUS = 32;
+  var NODE_SPACING_X = 110;
+  var NODE_SPACING_Y = 150;
+
+  // Warm color palette
+  var COLORS = {
+    nodeFill: '#e8f0de',
+    nodeStroke: '#c49a3c',
+    nodeStrokeHover: '#2d5016',
+    partnershipLine: '#c49a3c',
+    parentChildLine: '#a67c5b',
+    text: '#2c2c2c',
+    textMuted: '#6b6054',
+    textLight: '#9a8e82',
+    initials: '#2d5016',
+    background: '#faf8f5'
+  };
 
   // Read config from template (supports demo mode)
   var config = window.TREE_CONFIG || {};
@@ -14,8 +28,12 @@
   var PERSON_BASE_URL = config.personBaseUrl || '/people';
   var IS_DEMO = config.demoMode || false;
 
+  // Tooltip element
+  var tooltip;
+
   // Fetch tree data and render
   async function init() {
+    tooltip = document.getElementById('tree-tooltip');
     try {
       var resp = await fetch(API_URL);
       if (resp.status === 401) {
@@ -41,6 +59,18 @@
     // Clear any previous render
     svg.selectAll('*').remove();
 
+    // Add gradient definitions
+    var defs = svg.append('defs');
+
+    // Gradient for partnership lines
+    var partnerGrad = defs.append('linearGradient')
+      .attr('id', 'partnership-gradient')
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '100%').attr('y2', '0%');
+    partnerGrad.append('stop').attr('offset', '0%').attr('stop-color', COLORS.partnershipLine).attr('stop-opacity', 0.6);
+    partnerGrad.append('stop').attr('offset', '50%').attr('stop-color', COLORS.partnershipLine).attr('stop-opacity', 1);
+    partnerGrad.append('stop').attr('offset', '100%').attr('stop-color', COLORS.partnershipLine).attr('stop-opacity', 0.6);
+
     g = svg.append('g');
 
     zoom = d3.zoom()
@@ -54,7 +84,9 @@
       g.append('text')
         .attr('x', w / 2).attr('y', h / 2)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#6b6054')
+        .attr('fill', COLORS.textMuted)
+        .attr('font-family', "'Playfair Display', Georgia, serif")
+        .attr('font-size', '16px')
         .text('No family members yet');
       return;
     }
@@ -160,7 +192,7 @@
       ux += NODE_SPACING_X;
     });
 
-    // Draw parent-child lines
+    // Draw parent-child lines (curved, warm brown)
     var lineGen = d3.line().curve(d3.curveBumpY);
 
     allNodes.forEach(function(node) {
@@ -168,21 +200,46 @@
         node.children.forEach(function(child) {
           g.append('path')
             .attr('class', 'parent-child-line')
-            .attr('d', lineGen([[node.x, node.y + NODE_RADIUS], [child.x, child.y - NODE_RADIUS]]));
+            .attr('d', lineGen([[node.x, node.y + NODE_RADIUS + 4], [child.x, child.y - NODE_RADIUS - 4]]))
+            .attr('stroke', COLORS.parentChildLine)
+            .attr('stroke-width', 1.5)
+            .attr('fill', 'none')
+            .attr('opacity', 0.45);
         });
       }
     });
 
-    // Draw partnership lines
+    // Draw partnership lines (golden amber, distinct from parent-child)
     treeData.partnerships.forEach(function(p) {
       var posA = nodePositions[p.person_a_id];
       var posB = nodePositions[p.person_b_id];
       if (!posA || !posB) return;
       var dissolved = p.status === 'dissolved' || p.status === 'separated';
+
+      // Draw a double line for partnerships to distinguish from parent-child
       g.append('line')
         .attr('class', 'partnership-line' + (dissolved ? ' partnership-line--dissolved' : ''))
         .attr('x1', posA.x).attr('y1', posA.y)
-        .attr('x2', posB.x).attr('y2', posB.y);
+        .attr('x2', posB.x).attr('y2', posB.y)
+        .attr('stroke', COLORS.partnershipLine)
+        .attr('stroke-width', dissolved ? 2 : 3)
+        .attr('stroke-dasharray', dissolved ? '6,4' : 'none')
+        .attr('opacity', dissolved ? 0.4 : 0.7);
+
+      // Heart icon at midpoint for active partnerships
+      if (!dissolved) {
+        var mx = (posA.x + posB.x) / 2;
+        var my = (posA.y + posB.y) / 2;
+        g.append('text')
+          .attr('x', mx).attr('y', my)
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'central')
+          .attr('font-size', '10px')
+          .attr('pointer-events', 'none')
+          .text('♥')
+          .attr('fill', COLORS.partnershipLine)
+          .attr('opacity', 0.6);
+      }
     });
 
     // Draw person nodes
@@ -196,11 +253,19 @@
         .attr('transform', 'translate(' + node.x + ',' + node.y + ')')
         .style('cursor', 'pointer');
 
-      // Photo circle
+      // Shadow under node
+      nodeG.append('circle')
+        .attr('r', NODE_RADIUS + 1)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(60,40,20,0.08)')
+        .attr('stroke-width', 4)
+        .attr('filter', 'blur(2px)');
+
+      // Photo circle with amber border
       if (person.photo_url) {
         var clipId = 'clip-' + person.id.replace(/[^a-zA-Z0-9]/g, '');
-        var defs = nodeG.append('defs');
-        defs.append('clipPath').attr('id', clipId)
+        var nodeDefs = nodeG.append('defs');
+        nodeDefs.append('clipPath').attr('id', clipId)
           .append('circle').attr('r', NODE_RADIUS);
         var photoSrc = person.photo_url.startsWith('http')
           ? person.photo_url
@@ -215,14 +280,21 @@
           .attr('class', 'photo-clip')
           .attr('r', NODE_RADIUS)
           .attr('fill', 'none')
-          .attr('stroke', 'white').attr('stroke-width', 2);
+          .attr('stroke', COLORS.nodeStroke)
+          .attr('stroke-width', 2.5);
       } else {
+        // Gradient fill for placeholder
         nodeG.append('circle')
           .attr('class', 'photo-clip')
-          .attr('r', NODE_RADIUS);
+          .attr('r', NODE_RADIUS)
+          .attr('fill', COLORS.nodeFill)
+          .attr('stroke', COLORS.nodeStroke)
+          .attr('stroke-width', 2.5);
         nodeG.append('text')
           .attr('text-anchor', 'middle').attr('dy', '0.35em')
-          .attr('fill', '#2d5016').attr('font-size', '14px').attr('font-weight', '600')
+          .attr('fill', COLORS.initials)
+          .attr('font-size', '14px').attr('font-weight', '700')
+          .attr('font-family', "'Playfair Display', Georgia, serif")
           .attr('pointer-events', 'none')
           .text(person.display_name.substring(0, 2));
       }
@@ -230,24 +302,58 @@
       // Larger tap target for mobile
       nodeG.append('circle')
         .attr('class', 'tap-target')
-        .attr('r', NODE_RADIUS + 10);
+        .attr('r', NODE_RADIUS + 12)
+        .attr('fill', 'transparent');
 
-      // Name label
+      // Name label (serif font)
       nodeG.append('text')
         .attr('class', 'name-label')
-        .attr('dy', NODE_RADIUS + 16)
+        .attr('dy', NODE_RADIUS + 18)
+        .attr('font-family', "'Playfair Display', Georgia, serif")
+        .attr('font-size', '11px')
+        .attr('font-weight', '600')
+        .attr('fill', COLORS.text)
+        .attr('text-anchor', 'middle')
+        .attr('pointer-events', 'none')
         .text(person.display_name);
+
+      // Birth year (smaller, muted)
+      var birthYear = extractYear(person.birth_date_raw);
+      if (birthYear) {
+        nodeG.append('text')
+          .attr('class', 'birth-label')
+          .attr('dy', NODE_RADIUS + 32)
+          .attr('font-family', "'Nunito', sans-serif")
+          .attr('font-size', '9px')
+          .attr('fill', COLORS.textLight)
+          .attr('text-anchor', 'middle')
+          .attr('pointer-events', 'none')
+          .text(birthYear);
+      }
 
       // Country flag
       if (person.residence_country_code) {
+        var flagY = birthYear ? NODE_RADIUS + 44 : NODE_RADIUS + 32;
         nodeG.append('text')
           .attr('class', 'rel-label')
-          .attr('dy', NODE_RADIUS + 30)
+          .attr('dy', flagY)
           .text(countryFlag(person.residence_country_code));
       }
 
-      // Click handler — load person card into sidebar via HTMX
+      // Hover handlers for tooltip
+      nodeG.on('mouseenter', function(event) {
+        showTooltip(event, person);
+      });
+      nodeG.on('mousemove', function(event) {
+        moveTooltip(event);
+      });
+      nodeG.on('mouseleave', function() {
+        hideTooltip();
+      });
+
+      // Click handler — load person card into sidebar
       nodeG.on('click', function() {
+        hideTooltip();
         openPersonSidebar(person.id);
       });
 
@@ -264,6 +370,38 @@
     var scale = Math.min(w / (bounds.width + 100), h / (bounds.height + 100), 1);
     svg.call(zoom.transform,
       d3.zoomIdentity.translate(dx, dy).scale(scale));
+  }
+
+  // Extract year from date string
+  function extractYear(dateStr) {
+    if (!dateStr) return null;
+    var match = dateStr.match(/(\d{4})/);
+    return match ? match[1] : null;
+  }
+
+  // Tooltip functions
+  function showTooltip(event, person) {
+    if (!tooltip) return;
+    var nameEl = tooltip.querySelector('.tree-tooltip__name');
+    var yearEl = tooltip.querySelector('.tree-tooltip__year');
+    nameEl.textContent = person.display_name;
+    var birthYear = extractYear(person.birth_date_raw);
+    yearEl.textContent = birthYear ? ('Born ' + birthYear) : '';
+    yearEl.style.display = birthYear ? '' : 'none';
+    tooltip.classList.add('tree-tooltip--visible');
+    moveTooltip(event);
+  }
+
+  function moveTooltip(event) {
+    if (!tooltip) return;
+    var rect = document.getElementById('tree-page').getBoundingClientRect();
+    tooltip.style.left = (event.clientX - rect.left + 16) + 'px';
+    tooltip.style.top = (event.clientY - rect.top - 10) + 'px';
+  }
+
+  function hideTooltip() {
+    if (!tooltip) return;
+    tooltip.classList.remove('tree-tooltip--visible');
   }
 
   // Open person sidebar using HTMX
@@ -283,8 +421,8 @@
   }
 
   // Zoom controls
-  window.treeZoomIn = function() { svg.transition().call(zoom.scaleBy, 1.3); };
-  window.treeZoomOut = function() { svg.transition().call(zoom.scaleBy, 0.7); };
+  window.treeZoomIn = function() { svg.transition().duration(300).call(zoom.scaleBy, 1.3); };
+  window.treeZoomOut = function() { svg.transition().duration(300).call(zoom.scaleBy, 0.7); };
   window.treeReset = function() { render(); };
   window.closeSidebar = function() {
     document.getElementById('person-sidebar').classList.remove('person-sidebar--open');

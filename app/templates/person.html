@@ -28,8 +28,8 @@
     {% endif %}
   </div>
   {% if can_edit and not demo_mode %}
-  <div style="margin-top: 12px;">
-    <a href="/people/{{ person.id }}/edit" class="btn btn--sm" style="background:rgba(255,255,255,0.2); color:white;">{{ t('person.edit') }}</a>
+  <div style="margin-top: 14px;">
+    <a href="/people/{{ person.id }}/edit" class="btn btn--sm" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.3);">{{ t('person.edit') }}</a>
   </div>
   {% endif %}
 </div>
@@ -38,7 +38,7 @@
   {% if person.bio %}
   <div class="profile-section">
     <h3 class="profile-section__title">{{ t('person.bio') }}</h3>
-    <p>{{ person.bio }}</p>
+    <p style="line-height:1.7;">{{ person.bio }}</p>
   </div>
   {% endif %}
 
@@ -56,16 +56,16 @@
     <h3 class="profile-section__title">{{ t('person.contact') }}</h3>
     <div class="contact-btns">
       {% if person.contact_whatsapp %}
-      <a href="https://wa.me/{{ person.contact_whatsapp }}" class="contact-btn" target="_blank" rel="noopener">WhatsApp</a>
+      <a href="https://wa.me/{{ person.contact_whatsapp }}" class="contact-btn" target="_blank" rel="noopener">💬 WhatsApp</a>
       {% endif %}
       {% if person.contact_telegram %}
-      <a href="https://t.me/{{ person.contact_telegram }}" class="contact-btn" target="_blank" rel="noopener">Telegram</a>
+      <a href="https://t.me/{{ person.contact_telegram }}" class="contact-btn" target="_blank" rel="noopener">✈️ Telegram</a>
       {% endif %}
       {% if person.contact_signal %}
-      <span class="contact-btn">Signal: {{ person.contact_signal }}</span>
+      <span class="contact-btn">🔒 Signal: {{ person.contact_signal }}</span>
       {% endif %}
       {% if person.contact_email %}
-      <a href="mailto:{{ person.contact_email }}" class="contact-btn">Email</a>
+      <a href="mailto:{{ person.contact_email }}" class="contact-btn">📧 Email</a>
       {% endif %}
     </div>
   </div>

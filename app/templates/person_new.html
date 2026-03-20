@@ -2,9 +2,12 @@
 {% block title %}{{ t('person.add') }} — {{ t('app.name') }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 16px;">
+<div class="container" style="padding-top: 20px;">
   <div class="flex-between mb-16">
-    <h1 style="font-family: var(--font-serif); font-size: 1.3rem;">{{ t('person.add') }}</h1>
+    <div class="page-header">
+      <h1 class="page-header__title">{{ t('person.add') }}</h1>
+      <p class="page-header__subtitle">Add a new family member</p>
+    </div>
     <a href="/people" class="btn btn--ghost btn--sm">{{ t('common.cancel') }}</a>
   </div>
 
