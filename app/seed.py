@@ -58,13 +58,27 @@ async def seed(session: AsyncSession) -> None:
 
     moment_count = 0
     for m in data.get("moments", []):
+        moment_data = {k: v for k, v in m.items()}
+        # Parse occurred_at from string to datetime
+        if "occurred_at" in moment_data and isinstance(moment_data["occurred_at"], str):
+            moment_data["occurred_at"] = datetime.fromisoformat(moment_data["occurred_at"])
+        # Handle media_ids list → JSON column
+        media_ids_list = moment_data.pop("media_ids", None)
+
         result = await session.execute(select(Moment).where(Moment.id == m["id"]))
-        if not result.scalar_one_or_none():
-            moment_data = {k: v for k, v in m.items()}
-            # Parse occurred_at from string to datetime
-            if "occurred_at" in moment_data and isinstance(moment_data["occurred_at"], str):
-                moment_data["occurred_at"] = datetime.fromisoformat(moment_data["occurred_at"])
-            session.add(Moment(**moment_data))
+        existing = result.scalar_one_or_none()
+        if existing:
+            # Update fields on existing moments
+            for k, v in moment_data.items():
+                if k != "id":
+                    setattr(existing, k, v)
+            if media_ids_list is not None:
+                existing.media_ids = media_ids_list
+        else:
+            moment_obj = Moment(**moment_data)
+            if media_ids_list:
+                moment_obj.media_ids = media_ids_list
+            session.add(moment_obj)
             moment_count += 1
 
     reaction_count = 0

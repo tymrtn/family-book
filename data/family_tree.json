@@ -9,7 +9,6 @@
       "source": "manual",
       "visibility": "visible"
     },
-
     {
       "id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
       "first_name": "Alex",
@@ -25,10 +24,14 @@
       "branch": "rivera",
       "is_admin": true,
       "is_root": false,
-      "languages": ["en", "es", "ca"],
+      "languages": [
+        "en",
+        "es",
+        "ca"
+      ],
       "contact_email": "alex@demo-family.example",
       "bio": "Software developer who moved from Portland to Barcelona for love. Never looked back.",
-      "photo_url": "https://ui-avatars.com/api/?name=Alex+Rivera&background=4a7c2e&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-alex.jpg",
       "source": "manual"
     },
     {
@@ -48,13 +51,16 @@
       "branch": "santos",
       "is_admin": true,
       "is_root": false,
-      "languages": ["ru", "en", "es"],
+      "languages": [
+        "ru",
+        "en",
+        "es"
+      ],
       "contact_email": "maria@demo-family.example",
       "bio": "Interior architect originally from Saint Petersburg. Passionate about preserving family stories across cultures.",
-      "photo_url": "https://ui-avatars.com/api/?name=Maria+Santos&background=b33a3a&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-maria.jpg",
       "source": "manual"
     },
-
     {
       "id": "fba176d6-729b-4135-8031-bdae0673640a",
       "first_name": "James",
@@ -71,9 +77,12 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["en", "es"],
+      "languages": [
+        "en",
+        "es"
+      ],
       "bio": "Retired high school teacher. Moved from Mexico to the US in his twenties. Master woodworker.",
-      "photo_url": "https://ui-avatars.com/api/?name=James+Rivera&background=6b4c35&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-james.jpg",
       "source": "manual"
     },
     {
@@ -92,12 +101,13 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "bio": "Nurse practitioner. Born in Dublin, raised in Boston. The family's unofficial historian.",
-      "photo_url": "https://ui-avatars.com/api/?name=Linda+Rivera&background=2a6496&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-linda.jpg",
       "source": "manual"
     },
-
     {
       "id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
       "first_name": "Sophie",
@@ -113,10 +123,12 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "contact_email": "sophie@demo-family.example",
       "bio": "Marine biologist. Alex's younger sister. Currently researching orca populations in Puget Sound.",
-      "photo_url": "https://ui-avatars.com/api/?name=Sophie+Rivera&background=7db356&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-sophie.jpg",
       "source": "manual"
     },
     {
@@ -134,10 +146,9 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "photo_url": "https://ui-avatars.com/api/?name=Lily+RC&background=e8a4c8&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-lily.jpg",
       "source": "manual"
     },
-
     {
       "id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
       "first_name": "Yuki",
@@ -156,12 +167,14 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru", "ja"],
+      "languages": [
+        "ru",
+        "ja"
+      ],
       "bio": "Born in Vladivostok to a Russian-Japanese family. Moved to Tokyo after the war. Family matriarch.",
-      "photo_url": "https://ui-avatars.com/api/?name=Yuki+T&background=8a7e72&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-yuki.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000001-0000-0000-0000-000000000001",
       "first_name": "Nikolai",
@@ -182,13 +195,14 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru"],
+      "languages": [
+        "ru"
+      ],
       "bio": "Engineer who survived the Siege of Leningrad as a child. Gentle soul, loved chess and poetry.",
-      "photo_url": "https://ui-avatars.com/api/?name=Nikolai+K&background=3e2c1c&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-nikolai.jpg",
       "visibility": "memorial",
       "source": "manual"
     },
-
     {
       "id": "a1000002-0000-0000-0000-000000000002",
       "first_name": "Elena",
@@ -206,12 +220,13 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru"],
+      "languages": [
+        "ru"
+      ],
       "bio": "Retired literature professor. Still sharp as a tack at 87. Makes the best pirozhki in the family.",
-      "photo_url": "https://ui-avatars.com/api/?name=Elena+K&background=a67c5b&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-elena.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000003-0000-0000-0000-000000000003",
       "first_name": "Viktor",
@@ -229,13 +244,15 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru", "en"],
+      "languages": [
+        "ru",
+        "en"
+      ],
       "contact_email": "viktor@demo-family.example",
       "bio": "Maria's father. Economist turned small business owner. Divorced, remarried.",
-      "photo_url": "https://ui-avatars.com/api/?name=Viktor+K&background=2d5016&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-viktor.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000004-0000-0000-0000-000000000004",
       "first_name": "Irina",
@@ -252,12 +269,15 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru", "ja", "es"],
+      "languages": [
+        "ru",
+        "ja",
+        "es"
+      ],
       "bio": "Maria's mother. Born in Tokyo to Yuki, raised between Japan and Russia. Now lives near Maria in Barcelona.",
-      "photo_url": "https://ui-avatars.com/api/?name=Irina+K&background=c94040&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-irina.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000005-0000-0000-0000-000000000005",
       "first_name": "Emilio",
@@ -273,12 +293,14 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["es", "en"],
+      "languages": [
+        "es",
+        "en"
+      ],
       "bio": "Maria's father-in-law (Viktor's second wife's father... it's complicated). Master cigar roller turned restaurant owner.",
-      "photo_url": "https://ui-avatars.com/api/?name=Emilio+S&background=d4a053&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-emilio.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000006-0000-0000-0000-000000000006",
       "first_name": "Nadia",
@@ -295,12 +317,15 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["es", "ru", "en"],
+      "languages": [
+        "es",
+        "ru",
+        "en"
+      ],
       "bio": "Viktor's second wife. Cuban-American who fell in love with Russia. Emilio's daughter.",
-      "photo_url": "https://ui-avatars.com/api/?name=Nadia+K&background=6b4c35&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-nadia.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000007-0000-0000-0000-000000000007",
       "first_name": "Dmitri",
@@ -318,13 +343,16 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru", "de", "en"],
+      "languages": [
+        "ru",
+        "de",
+        "en"
+      ],
       "contact_email": "dmitri@demo-family.example",
       "bio": "Maria's half-brother. Graphic designer in Berlin. Viktor and Irina's son from before the divorce.",
-      "photo_url": "https://ui-avatars.com/api/?name=Dmitri+K&background=4a7c2e&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-dmitri.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000008-0000-0000-0000-000000000008",
       "first_name": "Sasha",
@@ -340,12 +368,15 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru", "es", "en"],
+      "languages": [
+        "ru",
+        "es",
+        "en"
+      ],
       "bio": "Maria's half-sister from Viktor's second marriage. University student studying marine biology.",
-      "photo_url": "https://ui-avatars.com/api/?name=Sasha+K&background=7db356&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-sasha.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000009-0000-0000-0000-000000000009",
       "first_name": "Wei",
@@ -361,12 +392,14 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["zh", "en"],
+      "languages": [
+        "zh",
+        "en"
+      ],
       "bio": "Sophie's husband. UX designer at a tech company. Met Sophie at a marine conservation gala.",
-      "photo_url": "https://ui-avatars.com/api/?name=Wei+Chen&background=2a6496&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-wei.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000010-0000-0000-0000-000000000010",
       "first_name": "Rosa",
@@ -383,12 +416,14 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["es", "en"],
+      "languages": [
+        "es",
+        "en"
+      ],
       "bio": "James's mother. The Rivera family matriarch. Famous for her mole negro recipe that she refuses to write down.",
-      "photo_url": "https://ui-avatars.com/api/?name=Rosa+R&background=8a7e72&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-rosa.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000011-0000-0000-0000-000000000011",
       "first_name": "Miguel",
@@ -408,13 +443,15 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["es", "en"],
+      "languages": [
+        "es",
+        "en"
+      ],
       "bio": "James's father. Came to Oregon as a farmworker, ended up owning a small construction company. Hard-working, kind-hearted.",
-      "photo_url": "https://ui-avatars.com/api/?name=Miguel+R&background=3e2c1c&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-miguel.jpg",
       "visibility": "memorial",
       "source": "manual"
     },
-
     {
       "id": "a1000012-0000-0000-0000-000000000012",
       "first_name": "Leo",
@@ -430,12 +467,15 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["es", "en", "ru"],
+      "languages": [
+        "es",
+        "en",
+        "ru"
+      ],
       "bio": "Alex and Maria's son. Trilingual before he could tie his shoes.",
-      "photo_url": "https://ui-avatars.com/api/?name=Leo+R&background=e8a4c8&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-leo.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000013-0000-0000-0000-000000000013",
       "first_name": "Clara",
@@ -452,10 +492,9 @@
       "is_admin": false,
       "is_root": false,
       "bio": "The newest member of the family. Born during a January snowstorm in Barcelona (a rare event!).",
-      "photo_url": "https://ui-avatars.com/api/?name=Clara+R&background=f0b6d6&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-clara.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000014-0000-0000-0000-000000000014",
       "first_name": "Patrick",
@@ -475,13 +514,15 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["en", "ga"],
+      "languages": [
+        "en",
+        "ga"
+      ],
       "bio": "Linda's father. Emigrated from Dublin to Boston in the 1960s. Firefighter for 30 years.",
-      "photo_url": "https://ui-avatars.com/api/?name=Patrick+OB&background=3e6b35&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-patrick.jpg",
       "visibility": "memorial",
       "source": "manual"
     },
-
     {
       "id": "a1000015-0000-0000-0000-000000000015",
       "first_name": "Kenji",
@@ -501,13 +542,14 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ja"],
+      "languages": [
+        "ja"
+      ],
       "bio": "Yuki's husband. Mechanical engineer. Built model trains with extraordinary detail.",
-      "photo_url": "https://ui-avatars.com/api/?name=Kenji+T&background=3e2c1c&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-kenji.jpg",
       "visibility": "memorial",
       "source": "manual"
     },
-
     {
       "id": "a1000016-0000-0000-0000-000000000016",
       "first_name": "Carlos",
@@ -523,12 +565,14 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["es", "en"],
+      "languages": [
+        "es",
+        "en"
+      ],
       "bio": "James's younger brother. Runs a successful landscaping business in LA. The fun uncle.",
-      "photo_url": "https://ui-avatars.com/api/?name=Carlos+R&background=d4a053&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-carlos.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000017-0000-0000-0000-000000000017",
       "first_name": "Maya",
@@ -544,13 +588,16 @@
       "branch": "rivera",
       "is_admin": false,
       "is_root": false,
-      "languages": ["en", "es", "ja"],
+      "languages": [
+        "en",
+        "es",
+        "ja"
+      ],
       "contact_email": "maya@demo-family.example",
       "bio": "Carlos's daughter. Teaches English in Tokyo. Alex's cousin. The family's global citizen.",
-      "photo_url": "https://ui-avatars.com/api/?name=Maya+R&background=c94040&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-maya.jpg",
       "source": "manual"
     },
-
     {
       "id": "a1000018-0000-0000-0000-000000000018",
       "first_name": "Tatiana",
@@ -568,13 +615,16 @@
       "branch": "santos",
       "is_admin": false,
       "is_root": false,
-      "languages": ["ru", "fi", "en"],
+      "languages": [
+        "ru",
+        "fi",
+        "en"
+      ],
       "bio": "Viktor's sister. Music teacher in Helsinki. The family's connector — she organizes the reunions.",
-      "photo_url": "https://ui-avatars.com/api/?name=Tatiana+K&background=6b4c35&color=fff&size=200",
+      "photo_url": "/static/demo-photos/portrait-tatiana.jpg",
       "source": "manual"
     }
   ],
-
   "parent_child": [
     {
       "id": "9c16d251-f627-41b9-a90e-a6d7fa91b500",
@@ -624,14 +674,12 @@
       "child_id": "a1000004-0000-0000-0000-000000000004",
       "kind": "biological"
     },
-
     {
       "id": "pc-0007-0000-0000-000000000007",
       "parent_id": "a1000015-0000-0000-0000-000000000015",
       "child_id": "a1000004-0000-0000-0000-000000000004",
       "kind": "biological"
     },
-
     {
       "id": "pc-0008-0000-0000-000000000008",
       "parent_id": "a1000001-0000-0000-0000-000000000001",
@@ -644,7 +692,6 @@
       "child_id": "a1000003-0000-0000-0000-000000000003",
       "kind": "biological"
     },
-
     {
       "id": "pc-0010-0000-0000-000000000010",
       "parent_id": "a1000001-0000-0000-0000-000000000001",
@@ -657,7 +704,6 @@
       "child_id": "a1000018-0000-0000-0000-000000000018",
       "kind": "biological"
     },
-
     {
       "id": "pc-0012-0000-0000-000000000012",
       "parent_id": "a1000003-0000-0000-0000-000000000003",
@@ -670,7 +716,6 @@
       "child_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "kind": "biological"
     },
-
     {
       "id": "pc-0014-0000-0000-000000000014",
       "parent_id": "a1000003-0000-0000-0000-000000000003",
@@ -683,7 +728,6 @@
       "child_id": "a1000007-0000-0000-0000-000000000007",
       "kind": "biological"
     },
-
     {
       "id": "pc-0016-0000-0000-000000000016",
       "parent_id": "a1000003-0000-0000-0000-000000000003",
@@ -696,14 +740,12 @@
       "child_id": "a1000008-0000-0000-0000-000000000008",
       "kind": "biological"
     },
-
     {
       "id": "pc-0018-0000-0000-000000000018",
       "parent_id": "a1000009-0000-0000-0000-000000000009",
       "child_id": "074e5429-4212-4a14-9f63-5106890c0ee9",
       "kind": "biological"
     },
-
     {
       "id": "pc-0019-0000-0000-000000000019",
       "parent_id": "a1000011-0000-0000-0000-000000000011",
@@ -716,7 +758,6 @@
       "child_id": "fba176d6-729b-4135-8031-bdae0673640a",
       "kind": "biological"
     },
-
     {
       "id": "pc-0021-0000-0000-000000000021",
       "parent_id": "a1000011-0000-0000-0000-000000000011",
@@ -729,28 +770,24 @@
       "child_id": "a1000016-0000-0000-0000-000000000016",
       "kind": "biological"
     },
-
     {
       "id": "pc-0023-0000-0000-000000000023",
       "parent_id": "a1000016-0000-0000-0000-000000000016",
       "child_id": "a1000017-0000-0000-0000-000000000017",
       "kind": "biological"
     },
-
     {
       "id": "pc-0024-0000-0000-000000000024",
       "parent_id": "a1000014-0000-0000-0000-000000000014",
       "child_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
       "kind": "biological"
     },
-
     {
       "id": "pc-0025-0000-0000-000000000025",
       "parent_id": "a1000005-0000-0000-0000-000000000005",
       "child_id": "a1000006-0000-0000-0000-000000000006",
       "kind": "biological"
     },
-
     {
       "id": "pc-0026-0000-0000-000000000026",
       "parent_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
@@ -776,7 +813,6 @@
       "kind": "biological"
     }
   ],
-
   "partnerships": [
     {
       "id": "b1c2d3e4-0001-0000-0000-000000000001",
@@ -852,7 +888,6 @@
       "start_date_precision": "year"
     }
   ],
-
   "moments": [
     {
       "id": "mom-0001-0000-0000-000000000001",
@@ -861,6 +896,9 @@
       "title": "Leo's First Day of School! 🎒",
       "body": "Our little explorer started preschool today at Escola Pública del Bosc. He marched in like he owned the place, didn't even look back. Maria was a mess (happy tears). His teacher says he's already translating for the other kids.",
       "milestone_type": "first_day_school",
+      "media_ids": [
+        "/static/demo-photos/first-day-school.jpg"
+      ],
       "occurred_at": "2024-09-09T08:30:00",
       "posted_by": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
       "source": "manual",
@@ -872,6 +910,9 @@
       "kind": "text",
       "title": "Summer in Barcelona — The Whole Family",
       "body": "James and Linda flew over from Portland. Viktor and Nadia came from Saint Petersburg. Even Yuki made the trip from Tokyo (at 84!). Three generations, five languages, one tiny apartment in Gràcia. The kids ran wild in Parc Güell while the grandparents argued about whose country makes better dumplings (пельмени vs. gyōza — the eternal debate). Best two weeks of the year.",
+      "media_ids": [
+        "/static/demo-photos/summer-reunion.jpg"
+      ],
       "occurred_at": "2025-07-20T18:00:00",
       "posted_by": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "source": "manual",
@@ -884,6 +925,9 @@
       "title": "Бабушка Лена Turns 87! 🎂",
       "body": "Video call with the whole family for Elena's birthday. She read us a Pushkin poem from memory, then told Viktor his haircut made him look like a potato. She's getting sharper with age. Sasha baked a Наполеон cake from her recipe — Elena said it was 'acceptable' (high praise).",
       "milestone_type": "birthday",
+      "media_ids": [
+        "/static/demo-photos/birthday-celebration.jpg"
+      ],
       "occurred_at": "2025-05-20T14:00:00",
       "posted_by": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "source": "manual",
@@ -899,7 +943,10 @@
       "occurred_at": "2025-06-15T20:00:00",
       "posted_by": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
       "source": "manual",
-      "visibility": "members"
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/anniversary-dinner.jpg"
+      ]
     },
     {
       "id": "mom-0005-0000-0000-000000000005",
@@ -911,7 +958,10 @@
       "occurred_at": "2024-01-20T03:45:00",
       "posted_by": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
       "source": "manual",
-      "visibility": "members"
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/newborn-baby.jpg"
+      ]
     },
     {
       "id": "mom-0006-0000-0000-000000000006",
@@ -919,6 +969,9 @@
       "kind": "text",
       "title": "New Year's Eve 2025 — Barcelona",
       "body": "Twelve grapes at midnight, as is tradition here. Leo managed seven before giving up. Clara ate none but enjoyed throwing them. Video called James & Linda in Portland (it was only 3pm there). Then called Viktor & Nadia in Saint Petersburg (already January 1st). Sophie sent a video of Lily refusing to go to sleep in Seattle. Same chaos, different time zones. We wouldn't have it any other way.",
+      "media_ids": [
+        "/static/demo-photos/new-years-eve.jpg"
+      ],
       "occurred_at": "2025-12-31T23:59:00",
       "posted_by": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
       "source": "manual",
@@ -934,7 +987,10 @@
       "occurred_at": "2025-03-26T10:00:00",
       "posted_by": "a1000016-0000-0000-0000-000000000016",
       "source": "manual",
-      "visibility": "members"
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/graduation-ceremony.jpg"
+      ]
     },
     {
       "id": "mom-0008-0000-0000-000000000008",
@@ -942,6 +998,9 @@
       "kind": "text",
       "title": "Sunday Paella at Abuela Rosa's Recipe",
       "body": "Maria attempted Rosa's paella recipe (the one she learned during the Portland visits). James said it was 'close but not quite' — which from him is basically a Michelin star. Linda sent corrections via WhatsApp. Leo ate only the saffron rice. Clara ate the wooden spoon. Family tradition: perfected by nobody, attempted by everyone.",
+      "media_ids": [
+        "/static/demo-photos/family-dinner.jpg"
+      ],
       "occurred_at": "2025-10-12T14:00:00",
       "posted_by": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "source": "manual",
@@ -956,7 +1015,10 @@
       "occurred_at": "2025-11-15T19:00:00",
       "posted_by": "a1000007-0000-0000-0000-000000000007",
       "source": "manual",
-      "visibility": "members"
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/art-gallery.jpg"
+      ]
     },
     {
       "id": "mom-0010-0000-0000-000000000010",
@@ -965,6 +1027,9 @@
       "title": "Lily Turns 6! 🎈",
       "body": "Princess-astronaut-dinosaur themed party (her choice, very specific). Wei made an incredible three-tier cake shaped like a rocket ship with a T-Rex pilot. Sophie invited Lily's entire kindergarten class plus half the neighborhood. Twenty kids, two exhausted parents, one very happy birthday girl.",
       "milestone_type": "birthday",
+      "media_ids": [
+        "/static/demo-photos/birthday-celebration.jpg"
+      ],
       "occurred_at": "2025-04-03T15:00:00",
       "posted_by": "4529af36-331e-467d-99b4-9f6cb7cbc385",
       "source": "manual",
@@ -980,7 +1045,10 @@
       "occurred_at": "2024-12-15T18:00:00",
       "posted_by": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "source": "manual",
-      "visibility": "members"
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/memorial-candle.jpg"
+      ]
     },
     {
       "id": "mom-0012-0000-0000-000000000012",
@@ -988,6 +1056,9 @@
       "kind": "text",
       "title": "James Finishes His Masterpiece 🪵",
       "body": "Dad finally finished the rocking chair he's been working on for TWO YEARS. Hand-carved walnut, no nails, traditional joinery. He made it for Leo and Clara — 'for when they visit Portland.' Mom says the garage smells like wood shavings and stubbornness. It's beautiful.",
+      "media_ids": [
+        "/static/demo-photos/woodworking-chair.jpg"
+      ],
       "occurred_at": "2025-08-30T16:00:00",
       "posted_by": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
       "source": "manual",
@@ -1002,6 +1073,23 @@
       "occurred_at": "2025-09-05T12:00:00",
       "posted_by": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "source": "manual",
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/barcelona-gothic.jpg"
+      ]
+    },
+    {
+      "id": "mom-0016-0000-0000-000000000016",
+      "person_id": "a1000012-0000-0000-0000-000000000012",
+      "kind": "text",
+      "title": "Beach Day at Sitges 🏖️",
+      "body": "First proper beach day of the summer. Alex had Leo on his shoulders pretending to be a 'wave monster' while Maria chased Clara through the shallows. The water was perfect — warm enough for the kids, cool enough for the grown-ups. Leo found a 'treasure' (a smooth rock) and insisted on bringing it home. Clara ate sand. Classic.",
+      "media_ids": [
+        "/static/demo-photos/beach-vacation.jpg"
+      ],
+      "occurred_at": "2025-06-28T17:00:00",
+      "posted_by": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "source": "manual",
       "visibility": "members"
     },
     {
@@ -1010,6 +1098,9 @@
       "kind": "text",
       "title": "Christmas Morning Chaos 🎄",
       "body": "Barcelona tradition: open presents on December 25th (for the American side) AND January 6th (for the Spanish side, Reyes Magos). The kids don't complain about getting presents twice. This year Leo asked for 'a real dinosaur bone' — Alex found one on Etsy (certified fossil). Clara got a toy piano and has been playing it at 6am every morning since. Send help.",
+      "media_ids": [
+        "/static/demo-photos/christmas-morning.jpg"
+      ],
       "occurred_at": "2025-12-25T09:00:00",
       "posted_by": "4924b856-8cb8-4fae-a103-2650d46501ef",
       "source": "manual",
@@ -1025,83 +1116,344 @@
       "occurred_at": "2025-12-12T13:00:00",
       "posted_by": "fba176d6-729b-4135-8031-bdae0673640a",
       "source": "manual",
-      "visibility": "members"
+      "visibility": "members",
+      "media_ids": [
+        "/static/demo-photos/birthday-tamales.jpg"
+      ]
     }
   ],
-
   "moment_reactions": [
-    {"id": "mr-001", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "❤️"},
-    {"id": "mr-002", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "fba176d6-729b-4135-8031-bdae0673640a", "emoji": "❤️"},
-    {"id": "mr-003", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e", "emoji": "🎉"},
-    {"id": "mr-004", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986", "emoji": "❤️"},
-
-    {"id": "mr-005", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e", "emoji": "❤️"},
-    {"id": "mr-006", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "fba176d6-729b-4135-8031-bdae0673640a", "emoji": "❤️"},
-    {"id": "mr-007", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "a1000003-0000-0000-0000-000000000003", "emoji": "😂"},
-    {"id": "mr-008", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986", "emoji": "😂"},
-    {"id": "mr-009", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "4529af36-331e-467d-99b4-9f6cb7cbc385", "emoji": "🎉"},
-
-    {"id": "mr-010", "moment_id": "mom-0003-0000-0000-000000000003", "person_id": "a1000003-0000-0000-0000-000000000003", "emoji": "❤️"},
-    {"id": "mr-011", "moment_id": "mom-0003-0000-0000-000000000003", "person_id": "a1000018-0000-0000-0000-000000000018", "emoji": "❤️"},
-    {"id": "mr-012", "moment_id": "mom-0003-0000-0000-000000000003", "person_id": "a1000008-0000-0000-0000-000000000008", "emoji": "🎉"},
-    {"id": "mr-013", "moment_id": "mom-0003-0000-0000-000000000003", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "❤️"},
-
-    {"id": "mr-014", "moment_id": "mom-0004-0000-0000-000000000004", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "❤️"},
-    {"id": "mr-015", "moment_id": "mom-0004-0000-0000-000000000004", "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e", "emoji": "❤️"},
-    {"id": "mr-016", "moment_id": "mom-0004-0000-0000-000000000004", "person_id": "a1000004-0000-0000-0000-000000000004", "emoji": "🎉"},
-
-    {"id": "mr-017", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "❤️"},
-    {"id": "mr-018", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "fba176d6-729b-4135-8031-bdae0673640a", "emoji": "❤️"},
-    {"id": "mr-019", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e", "emoji": "❤️"},
-    {"id": "mr-020", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986", "emoji": "🎉"},
-    {"id": "mr-021", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "a1000003-0000-0000-0000-000000000003", "emoji": "❤️"},
-    {"id": "mr-022", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "a1000004-0000-0000-0000-000000000004", "emoji": "😢"},
-
-    {"id": "mr-023", "moment_id": "mom-0006-0000-0000-000000000006", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "🎉"},
-    {"id": "mr-024", "moment_id": "mom-0006-0000-0000-000000000006", "person_id": "4529af36-331e-467d-99b4-9f6cb7cbc385", "emoji": "🎉"},
-    {"id": "mr-025", "moment_id": "mom-0006-0000-0000-000000000006", "person_id": "a1000007-0000-0000-0000-000000000007", "emoji": "😂"},
-
-    {"id": "mr-026", "moment_id": "mom-0007-0000-0000-000000000007", "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e", "emoji": "🎉"},
-    {"id": "mr-027", "moment_id": "mom-0007-0000-0000-000000000007", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "🎉"},
-    {"id": "mr-028", "moment_id": "mom-0007-0000-0000-000000000007", "person_id": "a1000017-0000-0000-0000-000000000017", "emoji": "❤️"},
-
-    {"id": "mr-029", "moment_id": "mom-0010-0000-0000-000000000010", "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e", "emoji": "🎉"},
-    {"id": "mr-030", "moment_id": "mom-0010-0000-0000-000000000010", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "🎉"},
-    {"id": "mr-031", "moment_id": "mom-0010-0000-0000-000000000010", "person_id": "fba176d6-729b-4135-8031-bdae0673640a", "emoji": "❤️"},
-    {"id": "mr-032", "moment_id": "mom-0010-0000-0000-000000000010", "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e", "emoji": "❤️"},
-
-    {"id": "mr-033", "moment_id": "mom-0011-0000-0000-000000000011", "person_id": "a1000003-0000-0000-0000-000000000003", "emoji": "😢"},
-    {"id": "mr-034", "moment_id": "mom-0011-0000-0000-000000000011", "person_id": "a1000002-0000-0000-0000-000000000002", "emoji": "🙏"},
-    {"id": "mr-035", "moment_id": "mom-0011-0000-0000-000000000011", "person_id": "a1000018-0000-0000-0000-000000000018", "emoji": "😢"},
-    {"id": "mr-036", "moment_id": "mom-0011-0000-0000-000000000011", "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e", "emoji": "🙏"},
-
-    {"id": "mr-037", "moment_id": "mom-0015-0000-0000-000000000015", "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e", "emoji": "❤️"},
-    {"id": "mr-038", "moment_id": "mom-0015-0000-0000-000000000015", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "emoji": "🎉"},
-    {"id": "mr-039", "moment_id": "mom-0015-0000-0000-000000000015", "person_id": "a1000016-0000-0000-0000-000000000016", "emoji": "❤️"},
-    {"id": "mr-040", "moment_id": "mom-0015-0000-0000-000000000015", "person_id": "a1000017-0000-0000-0000-000000000017", "emoji": "❤️"}
+    {
+      "id": "mr-001",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-002",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-003",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-004",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-005",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-006",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-007",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "a1000003-0000-0000-0000-000000000003",
+      "emoji": "😂"
+    },
+    {
+      "id": "mr-008",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
+      "emoji": "😂"
+    },
+    {
+      "id": "mr-009",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-010",
+      "moment_id": "mom-0003-0000-0000-000000000003",
+      "person_id": "a1000003-0000-0000-0000-000000000003",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-011",
+      "moment_id": "mom-0003-0000-0000-000000000003",
+      "person_id": "a1000018-0000-0000-0000-000000000018",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-012",
+      "moment_id": "mom-0003-0000-0000-000000000003",
+      "person_id": "a1000008-0000-0000-0000-000000000008",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-013",
+      "moment_id": "mom-0003-0000-0000-000000000003",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-014",
+      "moment_id": "mom-0004-0000-0000-000000000004",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-015",
+      "moment_id": "mom-0004-0000-0000-000000000004",
+      "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-016",
+      "moment_id": "mom-0004-0000-0000-000000000004",
+      "person_id": "a1000004-0000-0000-0000-000000000004",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-017",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-018",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-019",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-020",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-021",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "a1000003-0000-0000-0000-000000000003",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-022",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "a1000004-0000-0000-0000-000000000004",
+      "emoji": "😢"
+    },
+    {
+      "id": "mr-023",
+      "moment_id": "mom-0006-0000-0000-000000000006",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-024",
+      "moment_id": "mom-0006-0000-0000-000000000006",
+      "person_id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-025",
+      "moment_id": "mom-0006-0000-0000-000000000006",
+      "person_id": "a1000007-0000-0000-0000-000000000007",
+      "emoji": "😂"
+    },
+    {
+      "id": "mr-026",
+      "moment_id": "mom-0007-0000-0000-000000000007",
+      "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-027",
+      "moment_id": "mom-0007-0000-0000-000000000007",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-028",
+      "moment_id": "mom-0007-0000-0000-000000000007",
+      "person_id": "a1000017-0000-0000-0000-000000000017",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-029",
+      "moment_id": "mom-0010-0000-0000-000000000010",
+      "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-030",
+      "moment_id": "mom-0010-0000-0000-000000000010",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-031",
+      "moment_id": "mom-0010-0000-0000-000000000010",
+      "person_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-032",
+      "moment_id": "mom-0010-0000-0000-000000000010",
+      "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-033",
+      "moment_id": "mom-0011-0000-0000-000000000011",
+      "person_id": "a1000003-0000-0000-0000-000000000003",
+      "emoji": "😢"
+    },
+    {
+      "id": "mr-034",
+      "moment_id": "mom-0011-0000-0000-000000000011",
+      "person_id": "a1000002-0000-0000-0000-000000000002",
+      "emoji": "🙏"
+    },
+    {
+      "id": "mr-035",
+      "moment_id": "mom-0011-0000-0000-000000000011",
+      "person_id": "a1000018-0000-0000-0000-000000000018",
+      "emoji": "😢"
+    },
+    {
+      "id": "mr-036",
+      "moment_id": "mom-0011-0000-0000-000000000011",
+      "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "emoji": "🙏"
+    },
+    {
+      "id": "mr-037",
+      "moment_id": "mom-0015-0000-0000-000000000015",
+      "person_id": "8c84a330-8121-4cf7-9244-caa2d9dd5f4e",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-038",
+      "moment_id": "mom-0015-0000-0000-000000000015",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "emoji": "🎉"
+    },
+    {
+      "id": "mr-039",
+      "moment_id": "mom-0015-0000-0000-000000000015",
+      "person_id": "a1000016-0000-0000-0000-000000000016",
+      "emoji": "❤️"
+    },
+    {
+      "id": "mr-040",
+      "moment_id": "mom-0015-0000-0000-000000000015",
+      "person_id": "a1000017-0000-0000-0000-000000000017",
+      "emoji": "❤️"
+    }
   ],
-
   "moment_comments": [
-    {"id": "mc-001", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e", "body": "Our big boy! I can't believe he didn't cry. I definitely cried. 😭"},
-    {"id": "mc-002", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "fba176d6-729b-4135-8031-bdae0673640a", "body": "That's my grandson. Rivera kids don't look back. 💪"},
-    {"id": "mc-003", "moment_id": "mom-0001-0000-0000-000000000001", "person_id": "a1000004-0000-0000-0000-000000000004", "body": "Бабушка Ирина is so proud! Send more photos please!"},
-
-    {"id": "mc-004", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "a1000018-0000-0000-0000-000000000018", "body": "I wish I could have been there! Next year I'm coming from Helsinki no matter what. Save me some paella."},
-    {"id": "mc-005", "moment_id": "mom-0002-0000-0000-000000000002", "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986", "body": "ギョーザ is obviously superior. This is not up for debate. 🥟"},
-
-    {"id": "mc-006", "moment_id": "mom-0003-0000-0000-000000000003", "person_id": "a1000007-0000-0000-0000-000000000007", "body": "С днём рождения, бабушка! The potato comment is very on-brand. 😂"},
-    {"id": "mc-007", "moment_id": "mom-0003-0000-0000-000000000003", "person_id": "a1000008-0000-0000-0000-000000000008", "body": "She said my Наполеон was ACCEPTABLE! That's the highest praise she's ever given. I'm framing this."},
-
-    {"id": "mc-008", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "a1000003-0000-0000-0000-000000000003", "body": "She has the Kuznetsov eyes. Welcome to the family, маленькая Клара. ❤️"},
-    {"id": "mc-009", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "4529af36-331e-467d-99b4-9f6cb7cbc385", "body": "Another girl! The Rivera women are taking over. Lily can't wait to meet her new cousin! 💕"},
-    {"id": "mc-010", "moment_id": "mom-0005-0000-0000-000000000005", "person_id": "a1000010-0000-0000-0000-000000000010", "body": "A January baby, just like me! Que Dios la bendiga. Sending love from Portland. 🌹"},
-
-    {"id": "mc-011", "moment_id": "mom-0009-0000-0000-000000000009", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "body": "I DID NOT cry. I had allergies. The gallery was dusty. ...Okay, maybe a little. So proud of you, brother. ❤️"},
-    {"id": "mc-012", "moment_id": "mom-0009-0000-0000-000000000009", "person_id": "a1000003-0000-0000-0000-000000000003", "body": "Сынок, I'm sorry I couldn't be there. The photos look incredible. Your дед Коля would have loved this."},
-
-    {"id": "mc-013", "moment_id": "mom-0012-0000-0000-000000000012", "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef", "body": "The chair is absolutely gorgeous! Leo is going to fight Clara for who gets to sit in it. 😄"},
-    {"id": "mc-014", "moment_id": "mom-0012-0000-0000-000000000012", "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e", "body": "Two years of sawdust in my laundry and it was worth every speck. My husband, the artist."},
-
-    {"id": "mc-015", "moment_id": "mom-0015-0000-0000-000000000015", "person_id": "a1000017-0000-0000-0000-000000000017", "body": "Abuela will share that mole recipe over her dead body (her words, not mine). Happy birthday from Tokyo! 🎉"}
+    {
+      "id": "mc-001",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "body": "Our big boy! I can't believe he didn't cry. I definitely cried. 😭"
+    },
+    {
+      "id": "mc-002",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "fba176d6-729b-4135-8031-bdae0673640a",
+      "body": "That's my grandson. Rivera kids don't look back. 💪"
+    },
+    {
+      "id": "mc-003",
+      "moment_id": "mom-0001-0000-0000-000000000001",
+      "person_id": "a1000004-0000-0000-0000-000000000004",
+      "body": "Бабушка Ирина is so proud! Send more photos please!"
+    },
+    {
+      "id": "mc-004",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "a1000018-0000-0000-0000-000000000018",
+      "body": "I wish I could have been there! Next year I'm coming from Helsinki no matter what. Save me some paella."
+    },
+    {
+      "id": "mc-005",
+      "moment_id": "mom-0002-0000-0000-000000000002",
+      "person_id": "68f8d045-a6c8-4c1a-919d-a8fa44b0c986",
+      "body": "ギョーザ is obviously superior. This is not up for debate. 🥟"
+    },
+    {
+      "id": "mc-006",
+      "moment_id": "mom-0003-0000-0000-000000000003",
+      "person_id": "a1000007-0000-0000-0000-000000000007",
+      "body": "С днём рождения, бабушка! The potato comment is very on-brand. 😂"
+    },
+    {
+      "id": "mc-007",
+      "moment_id": "mom-0003-0000-0000-000000000003",
+      "person_id": "a1000008-0000-0000-0000-000000000008",
+      "body": "She said my Наполеон was ACCEPTABLE! That's the highest praise she's ever given. I'm framing this."
+    },
+    {
+      "id": "mc-008",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "a1000003-0000-0000-0000-000000000003",
+      "body": "She has the Kuznetsov eyes. Welcome to the family, маленькая Клара. ❤️"
+    },
+    {
+      "id": "mc-009",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "4529af36-331e-467d-99b4-9f6cb7cbc385",
+      "body": "Another girl! The Rivera women are taking over. Lily can't wait to meet her new cousin! 💕"
+    },
+    {
+      "id": "mc-010",
+      "moment_id": "mom-0005-0000-0000-000000000005",
+      "person_id": "a1000010-0000-0000-0000-000000000010",
+      "body": "A January baby, just like me! Que Dios la bendiga. Sending love from Portland. 🌹"
+    },
+    {
+      "id": "mc-011",
+      "moment_id": "mom-0009-0000-0000-000000000009",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "body": "I DID NOT cry. I had allergies. The gallery was dusty. ...Okay, maybe a little. So proud of you, brother. ❤️"
+    },
+    {
+      "id": "mc-012",
+      "moment_id": "mom-0009-0000-0000-000000000009",
+      "person_id": "a1000003-0000-0000-0000-000000000003",
+      "body": "Сынок, I'm sorry I couldn't be there. The photos look incredible. Your дед Коля would have loved this."
+    },
+    {
+      "id": "mc-013",
+      "moment_id": "mom-0012-0000-0000-000000000012",
+      "person_id": "4924b856-8cb8-4fae-a103-2650d46501ef",
+      "body": "The chair is absolutely gorgeous! Leo is going to fight Clara for who gets to sit in it. 😄"
+    },
+    {
+      "id": "mc-014",
+      "moment_id": "mom-0012-0000-0000-000000000012",
+      "person_id": "e75d88b4-c9fd-476f-87cb-fa68f62ae27e",
+      "body": "Two years of sawdust in my laundry and it was worth every speck. My husband, the artist."
+    },
+    {
+      "id": "mc-015",
+      "moment_id": "mom-0015-0000-0000-000000000015",
+      "person_id": "a1000017-0000-0000-0000-000000000017",
+      "body": "Abuela will share that mole recipe over her dead body (her words, not mine). Happy birthday from Tokyo! 🎉"
+    }
   ]
 }

@@ -78,10 +78,14 @@ async def _build_moment_card_simple(db: AsyncSession, moment: Moment, current_us
     media_list = []
     if moment.media_ids:
         for mid in moment.media_ids:
-            result = await db.execute(select(Media).where(Media.id == mid))
-            m = result.scalar_one_or_none()
-            if m:
-                media_list.append({"id": m.id, "url": f"/api/media/{m.id}/file", "width": m.width, "height": m.height})
+            # Support static demo photos referenced by path
+            if mid.startswith("/static/"):
+                media_list.append({"id": mid, "url": mid, "width": 800, "height": 600})
+            else:
+                result = await db.execute(select(Media).where(Media.id == mid))
+                m = result.scalar_one_or_none()
+                if m:
+                    media_list.append({"id": m.id, "url": f"/api/media/{m.id}/file", "width": m.width, "height": m.height})
 
     # Reactions
     result = await db.execute(

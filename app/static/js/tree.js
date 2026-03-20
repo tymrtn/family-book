@@ -267,7 +267,7 @@
         var nodeDefs = nodeG.append('defs');
         nodeDefs.append('clipPath').attr('id', clipId)
           .append('circle').attr('r', NODE_RADIUS);
-        var photoSrc = person.photo_url.startsWith('http')
+        var photoSrc = (person.photo_url.startsWith('http') || person.photo_url.startsWith('/'))
           ? person.photo_url
           : '/api/media/' + person.photo_url + '/file';
         nodeG.append('image')
