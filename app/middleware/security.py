@@ -56,10 +56,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://unpkg.com https://d3js.org; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "img-src 'self' data: blob: https://ui-avatars.com https://picsum.photos https://fastly.picsum.photos; "
             "connect-src 'self'; "
-            "font-src 'self'; "
+            "font-src 'self' https://fonts.gstatic.com; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self'"
