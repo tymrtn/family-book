@@ -42,7 +42,7 @@ async def test_root_person_name_redacted(admin_client: AsyncClient):
     resp = await admin_client.get("/api/persons/root-0000-0000-0000-000000000001")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["display_name"] == "Our Family"
+    assert data["display_name"] == "Семья Володиных"
     assert data["first_name"] is None
     assert data["last_name"] is None
     assert data["is_root"] is True
@@ -223,7 +223,7 @@ async def test_tree_authenticated(admin_client: AsyncClient):
 async def test_tree_root_name_is_redacted(admin_client: AsyncClient):
     resp = await admin_client.get("/api/tree")
     data = resp.json()
-    root_persons = [p for p in data["persons"] if p["display_name"] == "Our Family"]
+    root_persons = [p for p in data["persons"] if p["display_name"] == "Семья Володиных"]
     assert len(root_persons) == 1
 
 

@@ -60,6 +60,13 @@ def _country_flag(code: str | None) -> str:
 def _ctx(request: Request, current_user: Person | None = None, **kwargs):
     """Build common template context."""
     locale = _get_locale(request)
+
+    def _person_name(person):
+        """Locale-aware display name — uses tree.our_family for root person."""
+        if person and getattr(person, "is_root", False):
+            return translate("tree.our_family", locale)
+        return person.display_name if person else ""
+
     return {
         "request": request,
         "current_user": current_user,
@@ -68,6 +75,7 @@ def _ctx(request: Request, current_user: Person | None = None, **kwargs):
         "locale": locale,
         "t": lambda key: translate(key, locale),
         "country_flag": _country_flag,
+        "person_name": _person_name,
         **kwargs,
     }
 

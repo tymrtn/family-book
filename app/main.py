@@ -46,8 +46,8 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     application = FastAPI(
-        title="Family Book",
-        description="Private, self-hosted family tree and archive",
+        title="Volodin Family Book",
+        description="Private Volodin family tree and archive",
         version="0.1.0",
         lifespan=lifespan,
     )

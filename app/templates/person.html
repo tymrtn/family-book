@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ person.display_name }} — {{ t('app.name') }}{% endblock %}
+{% block title %}{{ person_name(person) if person_name is defined else person.display_name }} — {{ t('app.name') }}{% endblock %}
 
 {% block content %}
 <div class="profile-header">
@@ -12,7 +12,7 @@
     {{ person.display_name[:2] }}
     {% endif %}
   </div>
-  <h1 class="profile-header__name">{{ person.display_name }}</h1>
+  <h1 class="profile-header__name">{{ person_name(person) if person_name is defined else person.display_name }}</h1>
   {% if person.nickname %}
   <p class="profile-header__nickname">"{{ person.nickname }}"</p>
   {% endif %}

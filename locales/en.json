@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Family Book",
+    "name": "Volodin Family Book",
     "tagline": "Our living room, not the mall"
   },
   "nav": {
@@ -76,7 +76,7 @@
     "magic_link": "Send Magic Link",
     "email_placeholder": "your@email.com",
     "check_email": "Check your email for the login link",
-    "invite_welcome": "Welcome to Family Book",
+    "invite_welcome": "Welcome to the Volodin Family Book",
     "claim_invite": "Join Family"
   },
   "common": {
@@ -96,7 +96,7 @@
     "zoom_in": "Zoom In",
     "zoom_out": "Zoom Out",
     "reset_view": "Reset View",
-    "our_family": "Our Family"
+    "our_family": "The Volodins"
   },
   "trips": {
     "title": "My Trips",

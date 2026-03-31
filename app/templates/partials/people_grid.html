@@ -10,7 +10,7 @@
       {{ p.display_name[:2] }}
       {% endif %}
     </div>
-    <span class="person-card-sm__name">{{ p.display_name }}</span>
+    <span class="person-card-sm__name">{{ person_name(p) if person_name is defined else p.display_name }}</span>
     {% if p.nickname %}<span class="person-card-sm__detail">"{{ p.nickname }}"</span>{% endif %}
     {% if p.birth_date_raw %}
     <span class="person-card-sm__detail">{{ p.birth_date_raw[:4] if p.birth_date_raw and p.birth_date_raw[:4].isdigit() else '' }}{% if p.residence_place %} · {{ p.residence_place }}{% endif %}</span>

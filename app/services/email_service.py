@@ -25,15 +25,15 @@ async def send_magic_link_email(to_email: str, magic_link_url: str) -> bool:
     payload = {
         "account_id": settings.ENVELOPE_ACCOUNT_ID,
         "to": to_email,
-        "subject": "Your Family Book Login Link",
+        "subject": "Your Volodin Family Book Login Link",
         "html": (
             "<p>Hi!</p>"
-            f"<p><a href=\"{magic_link_url}\">Click here to log into Family Book</a></p>"
+            f"<p><a href=\"{magic_link_url}\">Click here to log into the Volodin Family Book</a></p>"
             "<p>This link expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>"
         ),
         "text": (
             "Hi!\n\n"
-            f"Click here to log into Family Book: {magic_link_url}\n\n"
+            f"Click here to log into the Volodin Family Book: {magic_link_url}\n\n"
             "This link expires in 15 minutes. If you didn't request this, you can safely ignore it."
         ),
     }

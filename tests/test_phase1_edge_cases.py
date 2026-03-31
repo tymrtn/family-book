@@ -129,10 +129,10 @@ async def test_root_person_redacted_in_list_detail_tree_and_search(
     detail_root = detail_resp.json()
 
     for root_summary in (list_root, tree_root):
-        assert root_summary["display_name"] == "Our Family"
+        assert root_summary["display_name"] == "Семья Володиных"
         assert root_summary["nickname"] is None
 
-    assert detail_root["display_name"] == "Our Family"
+    assert detail_root["display_name"] == "Семья Володиных"
     assert detail_root["first_name"] is None
     assert detail_root["last_name"] is None
     assert detail_root["nickname"] is None

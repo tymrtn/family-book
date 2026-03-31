@@ -119,7 +119,7 @@ class Person(Base, TimestampMixin):
     @property
     def display_name(self) -> str:
         if self.is_root:
-            return "Our Family"
+            return "Семья Володиных"
         if self.name_display_order == NameDisplayOrder.eastern.value:
             return f"{self.last_name} {self.first_name}"
         if self.name_display_order == NameDisplayOrder.patronymic.value and self.patronymic:

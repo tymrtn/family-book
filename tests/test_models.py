@@ -31,7 +31,7 @@ async def test_person_display_name_western(db: AsyncSession):
 @pytest.mark.asyncio
 async def test_person_display_name_root(db: AsyncSession):
     person = Person(first_name="Real", last_name="Name", is_root=True)
-    assert person.display_name == "Our Family"
+    assert person.display_name == "Семья Володиных"
 
 
 @pytest.mark.asyncio

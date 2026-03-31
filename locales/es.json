@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Libro Familiar",
+    "name": "Libro Familiar Volodin",
     "tagline": "Nuestro salón, no el centro comercial"
   },
   "nav": {
@@ -76,7 +76,7 @@
     "magic_link": "Enviar Enlace Mágico",
     "email_placeholder": "tu@email.com",
     "check_email": "Revisa tu correo para el enlace de inicio de sesión",
-    "invite_welcome": "Bienvenido/a al Libro Familiar",
+    "invite_welcome": "Bienvenido/a al Libro Familiar Volodin",
     "claim_invite": "Unirse a la Familia"
   },
   "common": {
@@ -96,7 +96,7 @@
     "zoom_in": "Acercar",
     "zoom_out": "Alejar",
     "reset_view": "Restablecer Vista",
-    "our_family": "Nuestra Familia"
+    "our_family": "Los Volodin"
   },
   "trips": {
     "title": "Mis Viajes",

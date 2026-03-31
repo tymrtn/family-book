@@ -1,7 +1,7 @@
 {
-  "name": "Family Book",
-  "short_name": "Family",
-  "description": "Private family tree and archive",
+  "name": "Volodin Family Book",
+  "short_name": "Volodins",
+  "description": "Private Volodin family tree and archive",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf8f5",
