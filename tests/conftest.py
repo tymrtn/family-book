@@ -24,6 +24,8 @@ from app.routes.relationships import router as relationships_router
 from app.routes.tree import router as tree_router
 from app.routes.media import router as media_router
 from app.routes.moments import router as moments_router
+from app.routes.trips import router as trips_router
+from app.routes.upload import router as upload_router
 from app.services.auth_service import create_session
 
 
@@ -157,6 +159,8 @@ def phase1_app():
     application.include_router(tree_router)
     application.include_router(media_router)
     application.include_router(moments_router)
+    application.include_router(trips_router)
+    application.include_router(upload_router)
     return application
 
 

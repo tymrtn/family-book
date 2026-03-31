@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ t('trips.join_title') }} — {{ t('app.name') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; max-width: 480px;">
+  {% if error %}
+  <div class="empty-state">
+    <div class="empty-state__icon">❌</div>
+    <p class="empty-state__text">{{ t('trips.join_invalid') }}</p>
+    <div class="empty-state__action mt-16">
+      <a href="/trips" class="btn btn--primary">{{ t('trips.all_trips') }}</a>
+    </div>
+  </div>
+  {% elif already_member %}
+  <div class="empty-state">
+    <div class="empty-state__icon">✅</div>
+    <p class="empty-state__text">{{ t('trips.join_already') }}</p>
+    <div class="empty-state__action mt-16">
+      <a href="/trips/{{ trip_id }}" class="btn btn--primary">{{ t('trips.join_open') }}</a>
+    </div>
+  </div>
+  {% else %}
+  <div style="text-align:center;">
+    <div style="font-size:3rem; margin-bottom:16px;">✈️</div>
+    <h2 style="margin-bottom:8px;">{{ t('trips.join_title') }}</h2>
+    <h1 style="font-family: var(--font-serif); font-size:1.8rem; margin-bottom:24px;">{{ trip_name }}</h1>
+    {% if trip_dates %}
+    <p class="text-muted" style="margin-bottom:24px;">📅 {{ trip_dates }}</p>
+    {% endif %}
+    <p class="text-muted" style="margin-bottom:32px;">
+      {{ t('trips.join_hint') }}
+    </p>
+    <form method="POST" action="/trips/join/{{ invite_token }}/confirm">
+      <button type="submit" class="btn btn--primary" style="width:100%;padding:14px;">
+        {{ t('trips.join_button') }}
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,800 @@
+{% extends "base.html" %}
+{% block title %}{{ trip.name }} — {{ t('app.name') }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+/* Day-by-day timeline */
+.day-chapter { margin-bottom: 32px; }
+.day-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 2px solid var(--border-light);
+  margin-bottom: 16px; position: sticky; top: var(--nav-h); z-index: 10;
+  background: var(--bg);
+}
+.day-header__date {
+  font-family: var(--font-serif); font-size: 1.3rem; font-weight: 600;
+}
+.day-header__count { font-size: 0.85rem; color: var(--text-muted); }
+.day-header__contributors {
+  display: flex; gap: -4px; margin-left: auto;
+}
+.day-header__avatar {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--warm-white);
+  object-fit: cover; margin-left: -6px;
+}
+.day-header__avatar:first-child { margin-left: 0; }
+
+/* Day mini map */
+.day-map { width: 100%; height: 120px; border-radius: var(--radius-sm); margin-bottom: 12px; }
+
+/* Photo grid per day */
+.day-grid {
+  display: grid; gap: 4px;
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (min-width: 480px) { .day-grid { grid-template-columns: repeat(4, 1fr); } }
+.day-grid__item {
+  position: relative; aspect-ratio: 1; overflow: hidden;
+  border-radius: 4px; cursor: pointer;
+}
+.day-grid__item img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform var(--transition-fast);
+}
+.day-grid__item:hover img { transform: scale(1.05); }
+
+/* Owner bubble on thumbnail corner */
+.owner-bubble {
+  position: absolute; bottom: 4px; right: 4px;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid white; object-fit: cover;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.owner-bubble--initials {
+  position: absolute; bottom: 4px; right: 4px;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid white; background: var(--green-deep); color: white;
+  font-size: 0.55rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Video badge */
+.video-badge {
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(0,0,0,0.6); color: white;
+  font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;
+}
+
+/* No-EXIF warning */
+.approx-badge {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(255,165,0,0.8); color: white;
+  font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;
+}
+
+/* Day selector strip */
+.day-selector {
+  display: flex; gap: 6px; overflow-x: auto;
+  padding: 8px 0; margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+.day-selector__btn {
+  flex-shrink: 0; padding: 6px 14px;
+  font-size: 0.8rem; font-weight: 500;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: var(--radius-full); cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.day-selector__btn:hover { border-color: var(--green-mid); color: var(--green-deep); }
+.day-selector__btn--active {
+  background: var(--green-deep); color: white; border-color: var(--green-deep);
+}
+
+/* Contributor filter chips */
+.contributor-filters {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.contributor-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px 4px 4px;
+  font-size: 0.8rem; font-weight: 500;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: var(--radius-full); cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.contributor-chip:hover { border-color: var(--green-mid); }
+.contributor-chip--active { background: var(--green-pale); border-color: var(--green-deep); }
+.contributor-chip__avatar {
+  width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
+}
+
+/* Upload progress overlay */
+.upload-progress {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  max-width: var(--max-w); width: calc(100% - 32px);
+  background: var(--warm-white); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg); padding: 16px; z-index: 200;
+}
+.upload-progress__bar {
+  height: 6px; background: var(--border-light); border-radius: 3px;
+  overflow: hidden; margin: 8px 0;
+}
+.upload-progress__fill {
+  height: 100%; background: var(--green-deep); border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Filmstrip */
+.filmstrip {
+  display: flex; gap: 4px; overflow-x: auto; padding: 8px 0;
+  -webkit-overflow-scrolling: touch;
+}
+.filmstrip__thumb {
+  flex-shrink: 0; width: 60px; height: 60px;
+  border-radius: 6px; object-fit: cover; cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+.filmstrip__thumb--active { border-color: var(--green-deep); }
+
+/* Quality toggle */
+.quality-toggle {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 0.8rem; color: var(--text-muted);
+}
+.quality-toggle label { cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px; padding-bottom: 100px;">
+  <!-- Trip header -->
+  <div class="trip-hero">
+    {% if trip.cover_url %}
+    <div class="trip-hero__cover">
+      <img src="{{ trip.cover_url }}" alt="">
+    </div>
+    {% endif %}
+    <div class="trip-hero__info">
+      <a href="/trips" class="text-sm text-muted" style="display:inline-block;margin-bottom:8px;">← {{ t('trips.all_trips') }}</a>
+      <h1 class="trip-hero__title">{{ trip.name }}</h1>
+      {% if trip.description %}
+      <p class="trip-hero__desc text-muted mt-4">{{ trip.description }}</p>
+      {% endif %}
+      {% if trip.start_date %}
+      <p class="text-sm text-muted mt-8">
+        📅 {{ trip.start_date }}{% if trip.end_date %} → {{ trip.end_date }}{% endif %}
+      </p>
+      {% endif %}
+      <div class="trip-hero__stats mt-8">
+        <span class="trip-card__stat">👥 {{ trip.participant_count }} {{ t('trips.contributors') }}</span>
+        <span class="trip-card__stat">📸 {{ trip.moment_count }} {{ t('trips.photos') }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab navigation -->
+  <div class="trip-tabs mt-16">
+    <button class="trip-tab trip-tab--active" data-tab="timeline" onclick="switchTab('timeline')">
+      📸 {{ t('trips.tab_timeline') }}
+    </button>
+    <button class="trip-tab" data-tab="map" onclick="switchTab('map')">
+      🗺️ {{ t('trips.tab_map') }}
+    </button>
+    <button class="trip-tab" data-tab="contributors" onclick="switchTab('contributors')">
+      👥 {{ t('trips.tab_contributors') }}
+    </button>
+    {% if is_organizer or current_user.is_admin %}
+    <button class="trip-tab" data-tab="settings" onclick="switchTab('settings')">
+      ⚙️ {{ t('trips.tab_settings') }}
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- ═══════ Timeline Tab ═══════ -->
+  <div class="trip-panel" id="panel-timeline">
+    {% if timeline_data and timeline_data.days %}
+
+    <!-- Day selector strip -->
+    <div class="day-selector" id="day-selector">
+      <button class="day-selector__btn day-selector__btn--active" data-day="all" onclick="filterDay('all')">
+        {{ t('trips.all_days') }}
+      </button>
+      {% for day in timeline_data.days %}
+      <button class="day-selector__btn" data-day="{{ day.date }}" onclick="filterDay('{{ day.date }}')">
+        {{ day.date }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Contributor filter chips -->
+    {% if all_contributors | length > 1 %}
+    <div class="contributor-filters">
+      <button class="contributor-chip contributor-chip--active" data-contributor="all" onclick="filterContributor('all')">
+        {{ t('trips.all_contributors') }}
+      </button>
+      {% for c in all_contributors %}
+      <button class="contributor-chip" data-contributor="{{ c.id }}" onclick="filterContributor('{{ c.id }}')">
+        {% if c.photo %}
+        <img src="{{ c.photo }}" alt="" class="contributor-chip__avatar">
+        {% endif %}
+        {{ c.name }}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Day-by-day chapters -->
+    <div id="timeline-chapters">
+    {% for day in timeline_data.days %}
+    <div class="day-chapter" id="day-{{ day.date }}" data-date="{{ day.date }}">
+      <div class="day-header">
+        <div>
+          <div class="day-header__date">{{ day.date }}</div>
+          <div class="day-header__count">{{ day.moments | length }} {{ t('trips.photos_count') if day.moments | length != 1 else t('trips.photo_count') }}</div>
+        </div>
+        <div class="day-header__contributors">
+          {% for c in day.contributors %}
+          {% if c.photo %}
+          <img src="{{ c.photo }}" alt="{{ c.name }}" class="day-header__avatar" title="{{ c.name }}">
+          {% else %}
+          <div class="day-header__avatar" style="background:var(--green-deep);color:white;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;" title="{{ c.name }}">{{ c.name[:2] }}</div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Mini route map for this day -->
+      {% if day.gps_points | length > 0 %}
+      <div class="day-map" id="day-map-{{ day.date }}"></div>
+      {% endif %}
+
+      <!-- Photo grid -->
+      <div class="day-grid">
+        {% for m in day.moments %}
+          {% for media in m.media %}
+          <div class="day-grid__item"
+               data-contributor="{{ m.poster_id or '' }}"
+               onclick="openLightbox('{{ media.resized_url or media.url }}')">
+            {% if media.media_type == 'video' %}
+            <img src="{{ media.thumbnail_url }}" alt="" loading="lazy">
+            <span class="video-badge">▶ {{ '%.0f' | format(media.duration_seconds or 0) }}s</span>
+            {% else %}
+            <img src="{{ media.thumbnail_url }}" alt="" loading="lazy">
+            {% endif %}
+
+            {% if media.taken_at_source == 'filename' or media.has_exif == false %}
+            <span class="approx-badge" title="{{ t('trips.approx_time') }}">~</span>
+            {% endif %}
+
+            {% if m.poster_photo %}
+            <img src="{{ m.poster_photo }}" alt="{{ m.poster_name }}" class="owner-bubble" title="{{ m.poster_name }}">
+            {% elif m.poster_name %}
+            <span class="owner-bubble--initials" title="{{ m.poster_name }}">{{ m.poster_name[:2] }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state" style="padding: 40px 0;">
+      <div class="empty-state__icon">📸</div>
+      <p class="empty-state__text">{{ t('trips.no_photos') }}</p>
+      <p class="text-sm text-muted mt-8">{{ t('trips.no_photos_hint') }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════ Map Tab ═══════ -->
+  <div class="trip-panel hidden" id="panel-map">
+    <div id="trip-map" style="width:100%; height:450px; border-radius: var(--radius-md); overflow:hidden; margin-top:16px;"></div>
+
+    <!-- Filmstrip synced with map -->
+    <div class="filmstrip" id="filmstrip"></div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+      <p class="text-sm text-muted" id="map-status">{{ t('trips.loading_map') }}</p>
+      <button class="btn btn--sm btn--secondary" id="play-trip-btn" onclick="playTrip()" style="display:none;">
+        ▶ {{ t('trips.play_trip') }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ Contributors Tab ═══════ -->
+  <div class="trip-panel hidden" id="panel-contributors">
+    <div class="mt-16">
+      {% for p in participants %}
+      <div class="contributor-row">
+        <div class="avatar" style="width:40px;height:40px;">
+          {% if p.photo_url %}
+          <img src="{{ p.photo_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          {% else %}
+          {{ p.person_name[:2] }}
+          {% endif %}
+        </div>
+        <div style="margin-left:12px;">
+          <span class="contributor-row__name">{{ p.person_name }}</span>
+          <span class="contributor-row__role text-sm text-muted">{{ p.role }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if is_organizer or current_user.is_admin %}
+    <div class="mt-24" style="border-top: 1px solid var(--border-light); padding-top: 20px;">
+      <h3 style="font-size: 1rem; margin-bottom: 12px;">{{ t('trips.invite_contributors') }}</h3>
+      <p class="text-sm text-muted mb-12">{{ t('trips.invite_hint') }}</p>
+
+      <div class="invite-link-box" id="invite-link-box">
+        <input type="text" class="form-input" id="invite-link-input"
+               value="{{ invite_url }}" readonly style="font-size:0.85rem;">
+        <button class="btn btn--sm btn--primary" onclick="copyInviteLink()">📋 {{ t('trips.copy') }}</button>
+      </div>
+
+      <div class="mt-16" style="text-align:center;">
+        <canvas id="qr-canvas" style="max-width:200px;"></canvas>
+      </div>
+
+      <div class="mt-12" style="display:flex; gap:8px; justify-content:center;">
+        <button class="btn btn--sm btn--secondary" onclick="refreshInviteLink()">🔄 {{ t('trips.new_link') }}</button>
+        <button class="btn btn--sm" style="color:var(--danger);" onclick="revokeInviteLink()">❌ {{ t('trips.revoke_link') }}</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════ Settings Tab ═══════ -->
+  {% if is_organizer or current_user.is_admin %}
+  <div class="trip-panel hidden" id="panel-settings">
+    <form id="trip-settings-form" onsubmit="updateTrip(event)" class="mt-16">
+      <div class="form-group">
+        <label class="form-label">{{ t('trips.trip_name') }}</label>
+        <input type="text" class="form-input" name="name" value="{{ trip.name }}" maxlength="300">
+      </div>
+      <div class="form-group">
+        <label class="form-label">{{ t('trips.description') }}</label>
+        <textarea class="form-textarea" name="description" rows="3">{{ trip.description or '' }}</textarea>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">{{ t('trips.start_date') }}</label>
+          <input type="date" class="form-input" name="start_date" value="{{ trip.start_date or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t('trips.end_date') }}</label>
+          <input type="date" class="form-input" name="end_date" value="{{ trip.end_date or '' }}">
+        </div>
+      </div>
+      <button type="submit" class="btn btn--primary">{{ t('trips.save_changes') }}</button>
+    </form>
+
+    <div class="mt-24" style="border-top: 1px solid var(--border-light); padding-top: 20px;">
+      <h3 style="font-size:1rem; margin-bottom:12px;">{{ t('trips.export') }}</h3>
+      <div style="display:flex; gap:8px;">
+        <a href="/api/trips/{{ trip.id }}/export?quality=original" class="btn btn--sm btn--secondary">📦 {{ t('trips.download_originals') }}</a>
+        <a href="/api/trips/{{ trip.id }}/export?quality=high" class="btn btn--sm btn--secondary">📦 {{ t('trips.download_high_quality') }}</a>
+      </div>
+    </div>
+
+    <div class="mt-24" style="border-top: 1px solid var(--border-light); padding-top: 20px;">
+      <button class="btn btn--sm" style="color: var(--danger);" onclick="deleteTrip()">{{ t('trips.delete_trip') }}</button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Upload bar (for contributors) -->
+{% if is_participant %}
+<div class="compose-bar" id="compose-bar">
+  <label class="compose-bar__photo-btn" for="trip-upload-file">📷</label>
+  <input type="file" id="trip-upload-file" accept="image/*,video/*,.heic,.heif" multiple capture="environment"
+         onchange="handleTripUpload(this)">
+  <span class="compose-bar__input" style="flex:1; font-size:0.85rem; color:var(--text-muted); pointer-events:none;">
+    {{ t('trips.add_photos') }}
+  </span>
+  <div class="quality-toggle">
+    <label>
+      <input type="checkbox" id="quality-toggle" checked> {{ t('trips.high_quality') }}
+    </label>
+  </div>
+</div>
+{% endif %}
+
+<!-- Upload progress overlay -->
+<div class="upload-progress hidden" id="upload-progress">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <span id="upload-status-text">{{ t('trips.uploading') }}...</span>
+    <span class="text-sm text-muted" id="upload-remaining"></span>
+  </div>
+  <div class="upload-progress__bar">
+    <div class="upload-progress__fill" id="upload-progress-fill" style="width:0%"></div>
+  </div>
+  <div class="text-sm text-muted" id="upload-detail"></div>
+</div>
+
+<!-- Upload modal -->
+<div id="upload-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeUploadModal()">
+  <div class="modal">
+    <div class="modal__header">
+      <span class="modal__title">{{ t('trips.add_photos') }}</span>
+      <button class="modal__close" onclick="closeUploadModal()">&times;</button>
+    </div>
+    <form id="upload-form" onsubmit="submitTripUpload(event)">
+      <div class="modal__body">
+        <div id="upload-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;"></div>
+        <div class="form-group">
+          <textarea class="form-textarea" name="body" id="upload-body" rows="2"
+                    placeholder="{{ t('trips.caption_placeholder') }}"></textarea>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="btn btn--secondary" onclick="closeUploadModal()">{{ t('common.cancel') }}</button>
+        <button type="submit" class="btn btn--primary" id="upload-btn">{{ t('trips.upload') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var TRIP_ID = '{{ trip.id }}';
+var PERSON_ID = '{{ current_user.id }}';
+var tripMap = null;
+var mapMarkers = [];
+var playInterval = null;
+
+/* ─── i18n strings for JS ─────────────────────────────────────── */
+var I18N = {
+  linkCopied: '{{ t("trips.link_copied") }}',
+  linkRefreshed: '{{ t("trips.link_refreshed") }}',
+  linkRevoked: '{{ t("trips.link_revoked") }}',
+  revokeConfirm: '{{ t("trips.revoke_confirm") }}',
+  tripUpdated: '{{ t("trips.trip_updated") }}',
+  deleteConfirm: '{{ t("trips.delete_confirm") }}',
+  failedUpdate: '{{ t("trips.failed_update") }}',
+  failedDelete: '{{ t("trips.failed_delete") }}',
+  error: '{{ t("common.error") }}',
+  uploading: '{{ t("trips.uploading") }}',
+  remaining: '{{ t("trips.remaining") }}',
+  uploadDone: '{{ t("trips.upload_done") }}',
+  uploadFailed: '{{ t("trips.upload_failed") }}',
+  loadingMap: '{{ t("trips.loading_map") }}',
+  noGps: '{{ t("trips.no_gps") }}',
+  photoLocations: '{{ t("trips.photo_locations") }}',
+  playTrip: '▶ {{ t("trips.play_trip") }}',
+  stop: '⏹ {{ t("trips.stop") }}',
+  by: '{{ t("trips.by") }}',
+  upload: '{{ t("trips.upload") }}',
+  noPhotos: '{{ t("trips.no_photos") }}',
+};
+
+/* ─── Tab switching ───────────────────────────────────────────── */
+function switchTab(tab) {
+  document.querySelectorAll('.trip-tab').forEach(function(el) { el.classList.remove('trip-tab--active'); });
+  document.querySelectorAll('.trip-panel').forEach(function(el) { el.classList.add('hidden'); });
+  document.querySelector('[data-tab="' + tab + '"]').classList.add('trip-tab--active');
+  document.getElementById('panel-' + tab).classList.remove('hidden');
+  if (tab === 'map' && !tripMap) initMap();
+  if (tab === 'timeline') initDayMaps();
+}
+
+/* ─── Day filtering ───────────────────────────────────────────── */
+function filterDay(day) {
+  document.querySelectorAll('.day-selector__btn').forEach(function(b) { b.classList.remove('day-selector__btn--active'); });
+  document.querySelector('[data-day="' + day + '"]').classList.add('day-selector__btn--active');
+  document.querySelectorAll('.day-chapter').forEach(function(ch) {
+    ch.style.display = (day === 'all' || ch.dataset.date === day) ? '' : 'none';
+  });
+}
+
+/* ─── Contributor filtering ───────────────────────────────────── */
+function filterContributor(id) {
+  document.querySelectorAll('.contributor-chip').forEach(function(c) { c.classList.remove('contributor-chip--active'); });
+  document.querySelector('[data-contributor="' + id + '"]').classList.add('contributor-chip--active');
+  document.querySelectorAll('.day-grid__item').forEach(function(item) {
+    item.style.display = (id === 'all' || item.dataset.contributor === id) ? '' : 'none';
+  });
+}
+
+/* ─── Day mini maps ───────────────────────────────────────────── */
+var DAY_GPS = {{ timeline_data.days | tojson if timeline_data else '[]' | safe }};
+var dayMapsInitialized = {};
+
+function initDayMaps() {
+  if (!DAY_GPS || !Array.isArray(DAY_GPS)) return;
+  DAY_GPS.forEach(function(day) {
+    if (!day.gps_points || day.gps_points.length === 0) return;
+    var mapId = 'day-map-' + day.date;
+    if (dayMapsInitialized[mapId]) return;
+    var el = document.getElementById(mapId);
+    if (!el) return;
+    dayMapsInitialized[mapId] = true;
+
+    var map = L.map(mapId, {zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 18}).addTo(map);
+
+    var points = day.gps_points.map(function(p) { return [p.lat, p.lng]; });
+    L.polyline(points, {color: '#2d5016', weight: 3, opacity: 0.7, dashArray: '6,8'}).addTo(map);
+    points.forEach(function(p) { L.circleMarker(p, {radius: 4, color: '#2d5016', fillOpacity: 0.8}).addTo(map); });
+    map.fitBounds(points, {padding: [15, 15]});
+  });
+}
+setTimeout(initDayMaps, 100);
+
+/* ─── Full map ────────────────────────────────────────────────── */
+async function initMap() {
+  tripMap = L.map('trip-map').setView([40, 0], 3);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap', maxZoom: 18,
+  }).addTo(tripMap);
+
+  try {
+    var resp = await fetch('/api/trips/' + TRIP_ID + '/map');
+    var geojson = await resp.json();
+
+    if (geojson.features.length === 0) {
+      document.getElementById('map-status').textContent = I18N.noGps;
+      return;
+    }
+
+    var filmstrip = document.getElementById('filmstrip');
+    filmstrip.innerHTML = '';
+    mapMarkers = [];
+
+    var markers = L.geoJSON(geojson, {
+      pointToLayer: function(feature, latlng) {
+        var color = feature.properties.poster_color || '#888';
+        var marker = L.circleMarker(latlng, {
+          radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9,
+        });
+        mapMarkers.push({marker: marker, feature: feature, latlng: latlng});
+
+        var thumb = document.createElement('img');
+        thumb.src = feature.properties.thumbnail_url;
+        thumb.className = 'filmstrip__thumb';
+        thumb.onclick = function() {
+          tripMap.setView(latlng, 15);
+          marker.openPopup();
+          document.querySelectorAll('.filmstrip__thumb').forEach(function(t) { t.classList.remove('filmstrip__thumb--active'); });
+          thumb.classList.add('filmstrip__thumb--active');
+        };
+        filmstrip.appendChild(thumb);
+
+        return marker;
+      },
+      onEachFeature: function(feature, layer) {
+        var p = feature.properties;
+        var popup = '';
+        if (p.thumbnail_url) popup += '<img src="' + p.thumbnail_url + '" style="max-width:180px;border-radius:8px;margin-bottom:8px;">';
+        if (p.caption) popup += '<p style="margin:4px 0;font-size:0.85rem;">' + p.caption + '</p>';
+        if (p.poster_name) popup += '<p style="margin:0;font-size:0.8rem;color:' + (p.poster_color||'#888') + ';">' + I18N.by + ' ' + p.poster_name + '</p>';
+        if (p.occurred_date) popup += '<p style="margin:0;font-size:0.75rem;color:#aaa;">' + p.occurred_date + '</p>';
+        layer.bindPopup(popup);
+      }
+    }).addTo(tripMap);
+
+    tripMap.fitBounds(markers.getBounds(), {padding: [30, 30]});
+
+    if (geojson.contributors && geojson.contributors.length > 1) {
+      var legend = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">';
+      geojson.contributors.forEach(function(c) {
+        legend += '<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;">';
+        legend += '<span style="width:10px;height:10px;border-radius:50%;background:' + c.color + ';display:inline-block;"></span>';
+        legend += c.name + '</span>';
+      });
+      legend += '</div>';
+      document.getElementById('map-status').innerHTML = geojson.features.length + ' ' + I18N.photoLocations + legend;
+    } else {
+      document.getElementById('map-status').textContent = geojson.features.length + ' ' + I18N.photoLocations;
+    }
+
+    document.getElementById('play-trip-btn').style.display = '';
+  } catch (e) {
+    document.getElementById('map-status').textContent = I18N.error;
+  }
+}
+
+/* ─── Play trip animation ─────────────────────────────────────── */
+function playTrip() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; document.getElementById('play-trip-btn').textContent = I18N.playTrip; return; }
+  if (mapMarkers.length === 0) return;
+  document.getElementById('play-trip-btn').textContent = I18N.stop;
+  var idx = 0;
+  var thumbs = document.querySelectorAll('.filmstrip__thumb');
+
+  function showNext() {
+    if (idx >= mapMarkers.length) { clearInterval(playInterval); playInterval = null; document.getElementById('play-trip-btn').textContent = I18N.playTrip; return; }
+    var item = mapMarkers[idx];
+    tripMap.setView(item.latlng, 15, {animate: true, duration: 0.8});
+    item.marker.openPopup();
+    thumbs.forEach(function(t) { t.classList.remove('filmstrip__thumb--active'); });
+    if (thumbs[idx]) { thumbs[idx].classList.add('filmstrip__thumb--active'); thumbs[idx].scrollIntoView({behavior:'smooth', inline:'center'}); }
+    idx++;
+  }
+  showNext();
+  playInterval = setInterval(showNext, 2500);
+}
+
+/* ─── Invite link ─────────────────────────────────────────────── */
+function copyInviteLink() {
+  var input = document.getElementById('invite-link-input');
+  input.select();
+  navigator.clipboard.writeText(input.value);
+  showToast(I18N.linkCopied, 'success');
+}
+
+async function refreshInviteLink() {
+  var resp = await fetch('/api/trips/' + TRIP_ID + '/invite', {method: 'POST'});
+  if (resp.ok) {
+    var data = await resp.json();
+    document.getElementById('invite-link-input').value = window.location.origin + data.invite_url;
+    showToast(I18N.linkRefreshed, 'success');
+    renderQR();
+  }
+}
+
+async function revokeInviteLink() {
+  if (!confirm(I18N.revokeConfirm)) return;
+  var resp = await fetch('/api/trips/' + TRIP_ID + '/invite', {method: 'DELETE'});
+  if (resp.ok) {
+    document.getElementById('invite-link-input').value = '—';
+    showToast(I18N.linkRevoked, 'success');
+  }
+}
+
+function renderQR() {
+  var canvas = document.getElementById('qr-canvas');
+  if (!canvas) return;
+  var url = document.getElementById('invite-link-input').value;
+  if (!url || url === '—') return;
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() { canvas.width = 200; canvas.height = 200; canvas.getContext('2d').drawImage(img, 0, 0, 200, 200); };
+  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+}
+document.addEventListener('DOMContentLoaded', renderQR);
+
+/* ─── Upload ──────────────────────────────────────────────────── */
+var UPLOAD_QUEUE = [];
+var uploadInProgress = false;
+
+function handleTripUpload(input) {
+  var files = Array.from(input.files);
+  if (files.length === 0) return;
+  UPLOAD_QUEUE.push.apply(UPLOAD_QUEUE, files);
+  input.value = '';
+  if (!uploadInProgress) processUploadQueue();
+}
+
+function closeUploadModal() {
+  document.getElementById('upload-modal').classList.add('hidden');
+  document.getElementById('upload-preview').innerHTML = '';
+  document.getElementById('trip-upload-file').value = '';
+}
+
+async function processUploadQueue() {
+  if (UPLOAD_QUEUE.length === 0) { uploadInProgress = false; return; }
+  uploadInProgress = true;
+
+  var total = UPLOAD_QUEUE.length;
+  var completed = 0;
+  var failed = 0;
+  var totalBytes = UPLOAD_QUEUE.reduce(function(s, f) { return s + f.size; }, 0);
+  var uploadedBytes = 0;
+
+  document.getElementById('upload-progress').classList.remove('hidden');
+
+  for (var i = 0; i < UPLOAD_QUEUE.length; i++) {
+    var file = UPLOAD_QUEUE[i];
+    var pct = Math.round((completed / total) * 100);
+    var rem = formatBytes(totalBytes - uploadedBytes);
+
+    document.getElementById('upload-status-text').textContent = I18N.uploading + ' ' + (completed + 1) + '/' + total + '...';
+    document.getElementById('upload-remaining').textContent = rem + ' ' + I18N.remaining;
+    document.getElementById('upload-progress-fill').style.width = pct + '%';
+    document.getElementById('upload-detail').textContent = file.name;
+
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        await chunkedUpload(file);
+      } else {
+        var fd = new FormData();
+        fd.append('files', file);
+        fd.append('person_id', PERSON_ID);
+        fd.append('trip_id', TRIP_ID);
+        var resp = await fetch('/api/upload/batch', {method: 'POST', body: fd});
+        if (!resp.ok) throw new Error();
+      }
+      completed++;
+      uploadedBytes += file.size;
+    } catch (e) {
+      failed++;
+      completed++;
+    }
+  }
+
+  document.getElementById('upload-progress-fill').style.width = '100%';
+  document.getElementById('upload-status-text').textContent = I18N.uploadDone + ' ' + (completed - failed) + (failed > 0 ? ', ' + failed + ' ' + I18N.uploadFailed : '');
+
+  UPLOAD_QUEUE.length = 0;
+  setTimeout(function() {
+    document.getElementById('upload-progress').classList.add('hidden');
+    window.location.reload();
+  }, 1500);
+}
+
+async function chunkedUpload(file) {
+  var initResp = await fetch('/api/upload/init', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      filename: file.name,
+      mime_type: file.type || 'application/octet-stream',
+      file_size: file.size,
+      person_id: PERSON_ID,
+      trip_id: TRIP_ID,
+    }),
+  });
+  if (!initResp.ok) throw new Error();
+  var init = await initResp.json();
+
+  var chunkSize = init.chunk_size;
+  var offset = 0;
+  while (offset < file.size) {
+    var end = Math.min(offset + chunkSize, file.size);
+    var chunk = file.slice(offset, end);
+    var chunkResp = await fetch('/api/upload/' + init.upload_id, {
+      method: 'PATCH', body: chunk,
+      headers: {'Content-Type': 'application/octet-stream'},
+    });
+    if (!chunkResp.ok) throw new Error();
+    offset = end;
+  }
+
+  var completeResp = await fetch('/api/upload/' + init.upload_id + '/complete', {method: 'POST'});
+  if (!completeResp.ok) throw new Error();
+  return await completeResp.json();
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  var k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+/* ─── Trip settings ───────────────────────────────────────────── */
+async function updateTrip(e) {
+  e.preventDefault();
+  var form = e.target;
+  var resp = await fetch('/api/trips/' + TRIP_ID, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name: form.name.value,
+      description: form.description.value || null,
+      start_date: form.start_date.value || null,
+      end_date: form.end_date.value || null,
+    }),
+  });
+  if (resp.ok) { showToast(I18N.tripUpdated, 'success'); setTimeout(function() { window.location.reload(); }, 500); }
+  else showToast(I18N.failedUpdate, 'error');
+}
+
+async function deleteTrip() {
+  if (!confirm(I18N.deleteConfirm)) return;
+  var resp = await fetch('/api/trips/' + TRIP_ID, {method: 'DELETE'});
+  if (resp.ok) window.location.href = '/trips';
+  else showToast(I18N.failedDelete, 'error');
+}
+</script>
+{% endblock %}

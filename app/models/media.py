@@ -50,6 +50,31 @@ class Media(Base):
     embed_html: Mapped[str | None] = mapped_column(Text, default=None)
     caption: Mapped[str | None] = mapped_column(String(1000), default=None)
     taken_date: Mapped[str | None] = mapped_column(String(10), default=None)
+    location_lat: Mapped[float | None] = mapped_column(Float, default=None)
+    location_lng: Mapped[float | None] = mapped_column(Float, default=None)
+
+    # ─── Extended EXIF / metadata fields ──────────────────────────
+    location_alt: Mapped[float | None] = mapped_column(Float, default=None)
+    taken_at: Mapped[datetime | None] = mapped_column(default=None)  # full datetime from EXIF DateTimeOriginal
+    taken_at_source: Mapped[str | None] = mapped_column(String(30), default=None)  # exif, filename, manual, approximate
+    camera_make: Mapped[str | None] = mapped_column(String(100), default=None)
+    camera_model: Mapped[str | None] = mapped_column(String(100), default=None)
+    orientation: Mapped[int | None] = mapped_column(Integer, default=None)  # EXIF orientation tag (1-8)
+    has_exif: Mapped[bool | None] = mapped_column(Boolean, default=None)  # False = likely forwarded
+    video_codec: Mapped[str | None] = mapped_column(String(50), default=None)
+    video_thumbnail_path: Mapped[str | None] = mapped_column(String(500), default=None)
+
+    # ─── Resized variants ─────────────────────────────────────────
+    # "High quality" resized copy (2048px max, video 720p)
+    resized_path: Mapped[str | None] = mapped_column(String(500), default=None)
+    resized_width: Mapped[int | None] = mapped_column(Integer, default=None)
+    resized_height: Mapped[int | None] = mapped_column(Integer, default=None)
+    resized_size_bytes: Mapped[int | None] = mapped_column(Integer, default=None)
+
+    # ─── Upload tracking ──────────────────────────────────────────
+    upload_id: Mapped[str | None] = mapped_column(String(64), default=None)  # for chunked uploads
+    upload_complete: Mapped[bool | None] = mapped_column(Boolean, default=True)
+
     source: Mapped[str] = mapped_column(String(30), default=MediaSource.manual.value)
     is_profile: Mapped[bool] = mapped_column(Boolean, default=False)
     uploaded_by: Mapped[str | None] = mapped_column(String(36), default=None)

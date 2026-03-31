@@ -19,6 +19,7 @@ from app.models.media import Media
 from app.models.moments import Moment, MomentComment
 from app.models.person import Person, AccountState, Visibility
 from app.models.relationships import ParentChild, Partnership
+from app.models.trips import Trip, TripParticipant, TripMoment
 from app.services.auth_service import get_valid_invite
 
 router = APIRouter(tags=["pages"])
@@ -30,7 +31,23 @@ templates = Jinja2Templates(directory=_template_dir)
 # ─── Helpers ───────────────────────────────────────────────────────
 
 def _get_locale(request: Request) -> str:
-    return request.cookies.get("locale", "en")
+    """Detect locale: cookie > Accept-Language header > 'en' default."""
+    # 1. Explicit cookie always wins (user chose this)
+    cookie_locale = request.cookies.get("locale")
+    if cookie_locale and cookie_locale in ("en", "es", "ru"):
+        return cookie_locale
+
+    # 2. Parse Accept-Language header (e.g. "ru-RU,ru;q=0.9,en;q=0.8")
+    accept = request.headers.get("accept-language", "")
+    if accept:
+        for part in accept.split(","):
+            tag = part.split(";")[0].strip().lower()
+            # Match primary subtag: "ru-RU" → "ru", "es-419" → "es"
+            lang = tag.split("-")[0]
+            if lang in ("ru", "es", "en"):
+                return lang
+
+    return "en"
 
 
 def _country_flag(code: str | None) -> str:
@@ -386,6 +403,337 @@ async def admin_new_person_page(
     return templates.TemplateResponse("person_new.html", _ctx(
         request, current_user, active_page="admin",
     ))
+
+
+# ─── Trips ────────────────────────────────────────────────────────
+
+@router.get("/trips", response_class=HTMLResponse)
+async def trips_page(
+    request: Request,
+    current_user: Person = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trip albums list page."""
+    from sqlalchemy import or_
+
+    if current_user.is_admin:
+        query = select(Trip).order_by(Trip.start_date.desc().nullslast(), Trip.created_at.desc())
+    else:
+        participant_trip_ids = select(TripParticipant.trip_id).where(
+            TripParticipant.person_id == current_user.id
+        )
+        query = select(Trip).where(
+            or_(
+                Trip.id.in_(participant_trip_ids),
+                Trip.visibility == "members",
+            )
+        ).order_by(Trip.start_date.desc().nullslast(), Trip.created_at.desc())
+
+    result = await db.execute(query)
+    trips_orm = result.scalars().all()
+
+    trips = []
+    for trip in trips_orm:
+        # Counts
+        p_count = (await db.execute(
+            select(func.count(TripParticipant.id)).where(TripParticipant.trip_id == trip.id)
+        )).scalar() or 0
+        m_count = (await db.execute(
+            select(func.count(TripMoment.id)).where(TripMoment.trip_id == trip.id)
+        )).scalar() or 0
+
+        cover_url = f"/api/media/{trip.cover_media_id}/file" if trip.cover_media_id else None
+
+        trips.append({
+            "id": trip.id,
+            "name": trip.name,
+            "description": trip.description,
+            "start_date": trip.start_date,
+            "end_date": trip.end_date,
+            "cover_url": cover_url,
+            "participant_count": p_count,
+            "moment_count": m_count,
+        })
+
+    return templates.TemplateResponse("trips.html", _ctx(
+        request, current_user, active_page="trips", trips=trips,
+    ))
+
+
+@router.get("/trips/{trip_id}", response_class=HTMLResponse)
+async def trip_detail_page(
+    trip_id: str,
+    request: Request,
+    current_user: Person = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trip detail page with timeline, map, contributors."""
+    result = await db.execute(select(Trip).where(Trip.id == trip_id))
+    trip = result.scalar_one_or_none()
+    if not trip:
+        return RedirectResponse("/trips", status_code=302)
+
+    # Build trip response data
+    p_count = (await db.execute(
+        select(func.count(TripParticipant.id)).where(TripParticipant.trip_id == trip.id)
+    )).scalar() or 0
+    m_count = (await db.execute(
+        select(func.count(TripMoment.id)).where(TripMoment.trip_id == trip.id)
+    )).scalar() or 0
+
+    cover_url = f"/api/media/{trip.cover_media_id}/file" if trip.cover_media_id else None
+
+    trip_data = {
+        "id": trip.id,
+        "name": trip.name,
+        "description": trip.description,
+        "start_date": trip.start_date,
+        "end_date": trip.end_date,
+        "cover_url": cover_url,
+        "participant_count": p_count,
+        "moment_count": m_count,
+        "invite_token": trip.invite_token,
+    }
+
+    # Participants
+    result = await db.execute(
+        select(TripParticipant).where(TripParticipant.trip_id == trip_id)
+        .order_by(TripParticipant.joined_at)
+    )
+    participants_orm = result.scalars().all()
+
+    participants = []
+    is_participant = False
+    is_organizer = False
+    for p in participants_orm:
+        pr = await db.execute(select(Person).where(Person.id == p.person_id))
+        person = pr.scalar_one_or_none()
+        participants.append({
+            "person_id": p.person_id,
+            "person_name": person.display_name if person else "Unknown",
+            "photo_url": person.photo_url if person else None,
+            "role": p.role,
+        })
+        if p.person_id == current_user.id:
+            is_participant = True
+            if p.role == "organizer":
+                is_organizer = True
+
+    # Build day-by-day timeline via API helper
+    result = await db.execute(
+        select(Moment)
+        .join(TripMoment, TripMoment.moment_id == Moment.id)
+        .where(TripMoment.trip_id == trip_id)
+        .order_by(Moment.occurred_at.asc())
+        .limit(500)
+    )
+    moments_orm = result.scalars().all()
+
+    # Build rich moment cards with owner attribution + media metadata
+    cards = []
+    all_contributors_map: dict[str, dict] = {}
+    for m in moments_orm:
+        poster_id = None
+        poster_name = None
+        poster_photo = None
+        if m.posted_by:
+            pr = await db.execute(select(Person).where(Person.id == m.posted_by))
+            poster = pr.scalar_one_or_none()
+            if poster:
+                poster_id = poster.id
+                poster_name = poster.display_name
+                poster_photo = poster.photo_url
+                if poster_id not in all_contributors_map:
+                    all_contributors_map[poster_id] = {
+                        "id": poster_id,
+                        "name": poster_name,
+                        "photo": poster_photo,
+                    }
+
+        media_list = []
+        if m.media_ids:
+            for mid in m.media_ids:
+                if mid.startswith("/static/"):
+                    media_list.append({
+                        "id": mid, "url": mid, "thumbnail_url": mid,
+                        "resized_url": mid, "width": 800, "height": 600,
+                        "media_type": "image",
+                    })
+                else:
+                    mr = await db.execute(select(Media).where(Media.id == mid))
+                    media_obj = mr.scalar_one_or_none()
+                    if media_obj:
+                        media_list.append({
+                            "id": media_obj.id,
+                            "url": f"/api/media/{media_obj.id}/file",
+                            "thumbnail_url": f"/api/media/{media_obj.id}/thumbnail",
+                            "resized_url": (f"/api/media/{media_obj.id}/resized"
+                                           if media_obj.resized_path
+                                           else f"/api/media/{media_obj.id}/file"),
+                            "width": media_obj.width,
+                            "height": media_obj.height,
+                            "media_type": media_obj.media_type,
+                            "location_lat": media_obj.location_lat,
+                            "location_lng": media_obj.location_lng,
+                            "taken_at": (media_obj.taken_at.isoformat()
+                                        if media_obj.taken_at else None),
+                            "taken_at_source": media_obj.taken_at_source,
+                            "has_exif": media_obj.has_exif,
+                            "duration_seconds": media_obj.duration_seconds,
+                        })
+
+        occurred_date = m.occurred_at.strftime("%Y-%m-%d") if m.occurred_at else None
+        cards.append({
+            "id": m.id,
+            "kind": m.kind,
+            "title": m.title,
+            "body": m.body,
+            "media": media_list,
+            "poster_id": poster_id,
+            "poster_name": poster_name,
+            "poster_photo": poster_photo,
+            "occurred_at": m.occurred_at.isoformat() if m.occurred_at else None,
+            "occurred_date": occurred_date,
+        })
+
+    # Group into days
+    days: dict[str, dict] = {}
+    for card in cards:
+        date_key = card["occurred_date"] or "unknown"
+        if date_key not in days:
+            days[date_key] = {
+                "date": date_key,
+                "moments": [],
+                "gps_points": [],
+                "contributors": {},
+            }
+        days[date_key]["moments"].append(card)
+        for media_item in card.get("media", []):
+            if (media_item.get("location_lat") is not None
+                    and media_item.get("location_lng") is not None):
+                days[date_key]["gps_points"].append({
+                    "lat": media_item["location_lat"],
+                    "lng": media_item["location_lng"],
+                    "time": media_item.get("taken_at") or card["occurred_at"],
+                })
+        if card["poster_id"]:
+            days[date_key]["contributors"][card["poster_id"]] = {
+                "id": card["poster_id"],
+                "name": card["poster_name"],
+                "photo": card["poster_photo"],
+            }
+
+    day_list = []
+    for date_key in sorted(days.keys()):
+        day = days[date_key]
+        day["contributors"] = list(day["contributors"].values())
+        day["gps_points"].sort(key=lambda p: p.get("time") or "")
+        day_list.append(day)
+
+    timeline_data = {
+        "total_moments": len(cards),
+        "total_days": len(day_list),
+        "days": day_list,
+    }
+
+    all_contributors = list(all_contributors_map.values())
+
+    # Invite URL
+    from app.config import get_settings
+    settings = get_settings()
+    invite_url = ""
+    if trip.invite_token:
+        invite_url = f"{settings.BASE_URL}/trips/join/{trip.invite_token}"
+
+    return templates.TemplateResponse("trip_detail.html", _ctx(
+        request, current_user, active_page="trips",
+        trip=trip_data, participants=participants,
+        timeline_data=timeline_data, all_contributors=all_contributors,
+        is_participant=is_participant, is_organizer=is_organizer,
+        invite_url=invite_url,
+    ))
+
+
+@router.get("/trips/join/{invite_token}", response_class=HTMLResponse)
+async def trip_join_page(
+    invite_token: str,
+    request: Request,
+    current_user: Person | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trip invite join page."""
+    result = await db.execute(select(Trip).where(Trip.invite_token == invite_token))
+    trip = result.scalar_one_or_none()
+
+    if not trip:
+        return templates.TemplateResponse("trip_join.html", _ctx(
+            request, current_user,
+            error="Invalid or expired invite link.",
+            invite_token=invite_token,
+            trip_name="", trip_id="", trip_dates="",
+            already_member=False,
+        ))
+
+    if not current_user:
+        # Redirect to login, then back here
+        return RedirectResponse(f"/login?return_to=/trips/join/{invite_token}", status_code=302)
+
+    # Check if already a participant
+    result = await db.execute(
+        select(TripParticipant).where(
+            TripParticipant.trip_id == trip.id,
+            TripParticipant.person_id == current_user.id,
+        )
+    )
+    already_member = result.scalar_one_or_none() is not None
+
+    trip_dates = ""
+    if trip.start_date:
+        trip_dates = trip.start_date
+        if trip.end_date:
+            trip_dates += f" → {trip.end_date}"
+
+    return templates.TemplateResponse("trip_join.html", _ctx(
+        request, current_user,
+        trip_name=trip.name,
+        trip_id=trip.id,
+        trip_dates=trip_dates,
+        invite_token=invite_token,
+        already_member=already_member,
+        error=None,
+    ))
+
+
+@router.post("/trips/join/{invite_token}/confirm")
+async def trip_join_confirm(
+    invite_token: str,
+    request: Request,
+    current_user: Person = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """Confirm joining a trip via invite link."""
+    result = await db.execute(select(Trip).where(Trip.invite_token == invite_token))
+    trip = result.scalar_one_or_none()
+    if not trip:
+        return RedirectResponse("/trips", status_code=302)
+
+    # Check not already a participant
+    result = await db.execute(
+        select(TripParticipant).where(
+            TripParticipant.trip_id == trip.id,
+            TripParticipant.person_id == current_user.id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        participant = TripParticipant(
+            trip_id=trip.id,
+            person_id=current_user.id,
+            role="contributor",
+        )
+        db.add(participant)
+        await db.flush()
+
+    return RedirectResponse(f"/trips/{trip.id}", status_code=302)
 
 
 # ─── Settings ─────────────────────────────────────────────────────

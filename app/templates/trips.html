@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ t('trips.title') }} — {{ t('app.name') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px; padding-bottom: 16px;">
+  <div class="flex-between mb-16">
+    <div class="page-header">
+      <h1 class="page-header__title">✈️ {{ t('trips.title') }}</h1>
+      <p class="text-sm text-muted mt-4">{{ t('trips.subtitle') }}</p>
+    </div>
+    <button class="btn btn--primary" onclick="document.getElementById('create-trip-modal').classList.remove('hidden')">
+      + {{ t('trips.new_trip') }}
+    </button>
+  </div>
+
+  {% if trips %}
+  <div class="trips-grid">
+    {% for trip in trips %}
+    <a href="/trips/{{ trip.id }}" class="trip-card">
+      <div class="trip-card__cover">
+        {% if trip.cover_url %}
+        <img src="{{ trip.cover_url }}" alt="" loading="lazy">
+        {% else %}
+        <div class="trip-card__cover-placeholder">
+          <span>✈️</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="trip-card__body">
+        <h3 class="trip-card__name">{{ trip.name }}</h3>
+        {% if trip.start_date %}
+        <p class="trip-card__dates text-sm text-muted">
+          {{ trip.start_date }}{% if trip.end_date %} → {{ trip.end_date }}{% endif %}
+        </p>
+        {% endif %}
+        <div class="trip-card__stats">
+          <span class="trip-card__stat">👥 {{ trip.participant_count }}</span>
+          <span class="trip-card__stat">📸 {{ trip.moment_count }}</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__icon">🗺️</div>
+    <p class="empty-state__text">{{ t('trips.no_trips') }}</p>
+    <p class="text-sm text-muted mt-8">{{ t('trips.no_trips_hint') }}</p>
+    <div class="empty-state__action">
+      <button class="btn btn--primary" onclick="document.getElementById('create-trip-modal').classList.remove('hidden')">
+        {{ t('trips.create_first') }}
+      </button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Create trip modal -->
+<div id="create-trip-modal" class="modal-backdrop hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal">
+    <div class="modal__header">
+      <span class="modal__title">{{ t('trips.new_trip') }}</span>
+      <button class="modal__close" onclick="document.getElementById('create-trip-modal').classList.add('hidden')">&times;</button>
+    </div>
+    <form id="create-trip-form" onsubmit="createTrip(event)">
+      <div class="modal__body">
+        <div class="form-group">
+          <label class="form-label">{{ t('trips.trip_name') }} *</label>
+          <input type="text" class="form-input" name="name" required maxlength="300"
+                 placeholder="{{ t('trips.trip_name_placeholder') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t('trips.description') }}</label>
+          <textarea class="form-textarea" name="description" rows="2"
+                    placeholder="{{ t('trips.description_placeholder') }}"></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">{{ t('trips.start_date') }}</label>
+            <input type="date" class="form-input" name="start_date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ t('trips.end_date') }}</label>
+            <input type="date" class="form-input" name="end_date">
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="btn btn--secondary"
+                onclick="document.getElementById('create-trip-modal').classList.add('hidden')">{{ t('common.cancel') }}</button>
+        <button type="submit" class="btn btn--primary" id="create-trip-btn">{{ t('trips.create_trip') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createTrip(e) {
+  e.preventDefault();
+  var form = e.target;
+  var btn = document.getElementById('create-trip-btn');
+  btn.disabled = true;
+  btn.textContent = '{{ t("trips.creating") }}';
+
+  var data = {
+    name: form.name.value,
+    description: form.description.value || null,
+    start_date: form.start_date.value || null,
+    end_date: form.end_date.value || null,
+  };
+
+  try {
+    var resp = await fetch('/api/trips', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+    });
+    if (resp.ok) {
+      var trip = await resp.json();
+      window.location.href = '/trips/' + trip.id;
+    } else {
+      var err = await resp.json();
+      showToast(err.detail || '{{ t("common.error") }}', 'error');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '{{ t("trips.create_trip") }}';
+  }
+}
+</script>
+{% endblock %}
