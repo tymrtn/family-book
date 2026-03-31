@@ -20,16 +20,10 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""
     REQUIRE_APPROVAL: bool = False
 
-    # SMTP for magic links
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASS: str = ""
-    SMTP_FROM: str = ""
-
-    # Envelope API (alternative to SMTP)
+    # Envelope API for magic link emails
     ENVELOPE_API_URL: str = ""
     ENVELOPE_API_KEY: str = ""
+    ENVELOPE_ACCOUNT_ID: str = ""
     ENVELOPE_WEBHOOK_SECRET: str = ""
 
     # Matrix

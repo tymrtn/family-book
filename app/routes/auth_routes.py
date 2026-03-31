@@ -17,6 +17,7 @@ from app.services.auth_service import (
     get_valid_invite,
     validate_magic_link,
 )
+from app.services.email_service import send_magic_link_email
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -98,10 +99,11 @@ async def request_magic_link(
 
     if person:
         token = await create_magic_link(db, person.id)
-        # TODO: Send email via SMTP or Envelope API
-        # For now, log a redacted token prefix (dev only)
+        settings = get_settings()
+        magic_link_url = f"{settings.BASE_URL}/auth/magic-link/{token}"
+        await send_magic_link_email(person.contact_email, magic_link_url)
         logger.info(
-            "Magic link for %s: token=%s",
+            "Magic link requested for %s: token=%s",
             person.contact_email,
             _redact_token(token),
         )
