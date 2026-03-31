@@ -105,8 +105,6 @@ async def request_magic_link(
             person.contact_email,
             _redact_token(token),
         )
-        # TEMP: print full token for E2E testing (remove after validation)
-        print(f"MAGIC_LINK_TOKEN={token}", flush=True)
 
     return {"message": "If that email is registered, a login link has been sent."}
 
