@@ -21,7 +21,9 @@
       </div>
       <div class="landing__top-actions">
         {% include 'partials/language_switcher.html' %}
+        {% if site_is_claimed %}
         <a href="/login" class="landing__login">{{ t('landing.cta_login') }}</a>
+        {% endif %}
       </div>
     </header>
 
@@ -36,7 +38,11 @@
           <li>💾 {{ t('landing.bullet_keep') }}</li>
         </ul>
         <div class="landing__actions">
-          <a href="#setup" class="btn btn--primary btn--lg">{{ t('landing.cta_claim') }}</a>
+          {% if site_is_claimed %}
+          <a href="/login" class="btn btn--primary btn--lg">{{ t('landing.cta_login') }}</a>
+          {% else %}
+          <a href="/claim" class="btn btn--primary btn--lg">Claim this site</a>
+          {% endif %}
           <a href="/demo" class="btn btn--outline btn--lg">{{ t('landing.cta_demo') }}</a>
         </div>
       </section>
@@ -81,8 +87,13 @@
           </div>
 
           <div class="claim-path">
+            {% if site_is_claimed %}
             <p>{{ t('landing.onboard_cta') }}</p>
             <a href="/login" class="btn btn--ghost">{{ t('landing.cta_login') }}</a>
+            {% else %}
+            <p>Claim the site first, then you can invite your family and replace the demo data.</p>
+            <a href="/claim" class="btn btn--ghost">Open claim form</a>
+            {% endif %}
           </div>
         </div>
       </section>

@@ -1,0 +1,48 @@
+<div class="card onboarding-shell">
+  <div class="card__body">
+    <div class="setup-stepper">
+      <span class="setup-stepper__item setup-stepper__item--done">1. Clean up</span>
+      <span class="setup-stepper__item setup-stepper__item--done">2. Add people</span>
+      <span class="setup-stepper__item setup-stepper__item--active">3. Invite</span>
+    </div>
+    <h2 class="setup-title">Invite your family</h2>
+    <p class="text-muted" style="margin-bottom: 18px;">Generate invite links for any family member with an email address. You can copy the link or send the invite later from admin.</p>
+
+    {% if invite_people %}
+    <div class="setup-list">
+      {% for person in invite_people %}
+      {% set generated_token = generated_links.get(person.id) %}
+      <div class="setup-list__item setup-list__item--actions">
+        <div>
+          <div class="setup-list__name">{{ person.display_name }}</div>
+          <div class="text-muted text-sm">{{ person.contact_email }}</div>
+        </div>
+        <div class="setup-row-actions">
+          <button class="btn btn--primary btn--sm"
+                  hx-post="/setup/invite/{{ person.id }}"
+                  hx-target="#setup-wizard"
+                  hx-swap="innerHTML">
+            Send invite
+          </button>
+          <button class="btn btn--outline btn--sm"
+                  {% if not generated_token %}disabled{% endif %}
+                  {% if generated_token %}onclick="copyInviteLink('{{ request.base_url }}invite/{{ generated_token }}')"{% endif %}>
+            Copy link
+          </button>
+        </div>
+      </div>
+      {% if generated_token %}
+      <div class="notice-card" style="margin-top: -4px; margin-bottom: 12px;">Invite ready: <a href="/invite/{{ generated_token }}">/invite/{{ generated_token }}</a></div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="setup-list__empty">Add at least one family member with an email before generating invites.</div>
+    {% endif %}
+
+    <div class="setup-actions" style="margin-top: 22px;">
+      <button type="button" class="btn btn--ghost" hx-get="/setup/step/2" hx-target="#setup-wizard" hx-swap="innerHTML">Back</button>
+      <a href="/" class="btn btn--primary btn--lg">Done</a>
+    </div>
+  </div>
+</div>

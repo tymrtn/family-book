@@ -6,22 +6,30 @@ All data fetching happens server-side. Templates use HTMX for dynamic interactio
 
 import os
 
-from fastapi import APIRouter, Depends, Form, Query, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user, require_admin, require_auth
+from app.auth import SESSION_COOKIE_NAME, get_current_user, require_admin, require_auth
 from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, t as translate
+from app.models.auth import Invite
 from app.models.media import Media
 from app.models.moments import Moment, MomentComment
 from app.models.person import Person, AccountState, Visibility
 from app.models.relationships import ParentChild, Partnership
 from app.models.trips import Trip, TripParticipant, TripMoment
-from app.services.auth_service import get_valid_invite
-from app.services.site_settings import get_site_settings, save_site_settings
+from app.services.auth_service import create_invite, create_session, get_valid_invite
+from app.services.onboarding_service import add_setup_member, get_seed_data_counts, remove_demo_data
+from app.services.site_settings import (
+    SITE_STATE_CLAIMED,
+    claim_lock,
+    claim_site,
+    get_site_settings,
+    save_site_settings,
+)
 
 router = APIRouter(tags=["pages"])
 
@@ -80,10 +88,68 @@ def _ctx(request: Request, current_user: Person | None = None, **kwargs):
         "supported_locales": SUPPORTED_LOCALES,
         "site_settings": site_settings,
         "site_title": site_title,
+        "site_state": site_settings.state,
+        "site_is_claimed": site_settings.state == SITE_STATE_CLAIMED,
         "country_flag": _country_flag,
         "person_name": _person_name,
         **kwargs,
     }
+
+
+def _not_found_response() -> HTMLResponse:
+    return HTMLResponse("Not found", status_code=404)
+
+
+async def _setup_people(db: AsyncSession, admin_id: str) -> list[Person]:
+    result = await db.execute(
+        select(Person)
+        .where(Person.created_by == admin_id, Person.id != admin_id)
+        .order_by(Person.created_at.asc(), Person.last_name.asc(), Person.first_name.asc())
+    )
+    return result.scalars().all()
+
+
+async def _setup_invites(db: AsyncSession, person_ids: list[str]) -> dict[str, Invite]:
+    if not person_ids:
+        return {}
+    result = await db.execute(
+        select(Invite)
+        .where(Invite.person_id.in_(person_ids))
+        .order_by(Invite.created_at.desc())
+    )
+    invites: dict[str, Invite] = {}
+    for invite in result.scalars().all():
+        invites.setdefault(invite.person_id, invite)
+    return invites
+
+
+async def _render_setup_step(
+    request: Request,
+    db: AsyncSession,
+    current_user: Person,
+    *,
+    step: int,
+    note: str | None = None,
+    generated_links: dict[str, str] | None = None,
+):
+    seed_counts = await get_seed_data_counts(db)
+    added_people = await _setup_people(db, current_user.id)
+    invite_people = [person for person in added_people if person.contact_email]
+    invite_map = await _setup_invites(db, [person.id for person in invite_people])
+    return templates.TemplateResponse(
+        f"partials/setup_step_{step}.html",
+        _ctx(
+            request,
+            current_user,
+            step=step,
+            seed_counts=seed_counts,
+            added_people=added_people,
+            invite_people=invite_people,
+            invite_map=invite_map,
+            note=note,
+            generated_links=generated_links or {},
+        ),
+    )
 
 
 @router.post("/locale")
@@ -126,6 +192,62 @@ async def update_site_settings(
     locale = _get_locale(request)
     ctx = _ctx(request, site_settings=updated, site_title=updated.title or translate("app.name", locale))
     return templates.TemplateResponse("partials/site_settings_preview.html", ctx)
+
+
+@router.get("/claim", response_class=HTMLResponse)
+async def claim_page(request: Request):
+    site_settings = get_site_settings(force_reload=True)
+    if site_settings.state == SITE_STATE_CLAIMED:
+        return _not_found_response()
+    return templates.TemplateResponse("claim.html", _ctx(request))
+
+
+@router.post("/claim")
+async def claim_site_route(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    email: str = Form(...),
+    family_name: str = Form(...),
+):
+    async with claim_lock:
+        site_settings = get_site_settings(force_reload=True)
+        if site_settings.state == SITE_STATE_CLAIMED:
+            return _not_found_response()
+
+        person = Person(
+            first_name=first_name.strip(),
+            last_name=last_name.strip(),
+            contact_email=email.strip().lower(),
+            is_admin=True,
+        )
+        db.add(person)
+        await db.flush()
+
+        session_token = await create_session(
+            db,
+            person_id=person.id,
+            auth_method="magic_link",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        claim_site(title=family_name.strip(), claimed_by=person.id)
+
+        response = RedirectResponse("/setup", status_code=303)
+        from app.config import get_settings
+        settings = get_settings()
+        response.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value=session_token,
+            httponly=True,
+            secure=settings.BASE_URL.startswith("https"),
+            samesite="lax",
+            max_age=30 * 24 * 3600,
+            path="/",
+        )
+        return response
 
 
 async def _build_moment_card_simple(db: AsyncSession, moment: Moment, current_user_id: str) -> dict:
@@ -255,8 +377,11 @@ async def invite_page(token: str, request: Request, db: AsyncSession = Depends(g
     # Validate return_to is a safe relative URL
     if not return_to.startswith("/"):
         return_to = "/"
+    wants_html = "text/html" in request.headers.get("accept", "")
     invite = await get_valid_invite(db, token)
     if not invite:
+        if not wants_html:
+            return JSONResponse({"error": "Invalid or expired invite link.", "person_name": "", "branch": "", "token": token})
         return templates.TemplateResponse("invite.html", _ctx(
             request, error="Invalid or expired invite link.", token=token,
             person_name="", branch="", return_to=return_to,
@@ -265,10 +390,15 @@ async def invite_page(token: str, request: Request, db: AsyncSession = Depends(g
     result = await db.execute(select(Person).where(Person.id == invite.person_id))
     person = result.scalar_one_or_none()
     if not person:
+        if not wants_html:
+            return JSONResponse({"error": "Person not found.", "person_name": "", "branch": "", "token": token})
         return templates.TemplateResponse("invite.html", _ctx(
             request, error="Person not found.", token=token,
             person_name="", branch="", return_to=return_to,
         ))
+
+    if not wants_html:
+        return JSONResponse({"person_name": person.display_name, "branch": person.branch, "token": token})
 
     return templates.TemplateResponse("invite.html", _ctx(
         request, token=token, person_name=person.display_name,
@@ -451,11 +581,27 @@ async def admin_page(
         select(Person).order_by(Person.last_name, Person.first_name)
     )
     all_persons = result.scalars().all()
+    demo_counts = await get_seed_data_counts(db)
 
     return templates.TemplateResponse("admin.html", _ctx(
         request, current_user, active_page="admin",
-        stats=stats, pending_persons=pending_persons, all_persons=all_persons,
+        stats=stats, pending_persons=pending_persons, all_persons=all_persons, demo_counts=demo_counts,
     ))
+
+
+@router.post("/admin/demo-cleanup", response_class=HTMLResponse)
+async def admin_demo_cleanup(
+    request: Request,
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await remove_demo_data(db)
+    await db.commit()
+    demo_counts = await get_seed_data_counts(db)
+    return templates.TemplateResponse(
+        "partials/admin_demo_data.html",
+        _ctx(request, current_user, demo_counts=demo_counts),
+    )
 
 
 @router.get("/admin/people/new", response_class=HTMLResponse)
@@ -466,6 +612,95 @@ async def admin_new_person_page(
     return templates.TemplateResponse("person_new.html", _ctx(
         request, current_user, active_page="admin",
     ))
+
+
+@router.get("/setup", response_class=HTMLResponse)
+async def setup_page(
+    request: Request,
+    current_user: Person = Depends(require_admin),
+):
+    return templates.TemplateResponse("setup.html", _ctx(
+        request, current_user, active_page="setup",
+    ))
+
+
+@router.get("/setup/step/{step}", response_class=HTMLResponse)
+async def setup_step(
+    step: int,
+    request: Request,
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if step not in {1, 2, 3}:
+        raise HTTPException(status_code=404, detail="Step not found")
+    return await _render_setup_step(request, db, current_user, step=step)
+
+
+@router.post("/setup/clean", response_class=HTMLResponse)
+async def setup_clean(
+    request: Request,
+    action: str = Form("keep"),
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if action == "remove":
+        await remove_demo_data(db)
+        await db.commit()
+    return await _render_setup_step(request, db, current_user, step=2)
+
+
+@router.post("/setup/add-member", response_class=HTMLResponse)
+async def setup_add_member(
+    request: Request,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    relationship: str = Form(...),
+    email: str = Form(""),
+    branch: str = Form(""),
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    note = None
+    if relationship not in {"parent", "child", "sibling", "partner"}:
+        note = "Choose a valid relationship."
+    else:
+        _, note = await add_setup_member(
+            db,
+            admin=current_user,
+            first_name=first_name,
+            last_name=last_name,
+            relationship=relationship,
+            email=email,
+            branch=branch,
+        )
+        await db.commit()
+    return await _render_setup_step(request, db, current_user, step=2, note=note)
+
+
+@router.get("/setup/invite-step", response_class=HTMLResponse)
+async def setup_invite_step(
+    request: Request,
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _render_setup_step(request, db, current_user, step=3)
+
+
+@router.post("/setup/invite/{person_id}", response_class=HTMLResponse)
+async def setup_send_invite(
+    person_id: str,
+    request: Request,
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    generated_links: dict[str, str] = {}
+    result = await db.execute(select(Person).where(Person.id == person_id))
+    person = result.scalar_one_or_none()
+    if person and person.contact_email:
+        invite = await create_invite(db, person.id, current_user.id)
+        await db.commit()
+        generated_links[person.id] = invite.raw_token
+    return await _render_setup_step(request, db, current_user, step=3, generated_links=generated_links)
 
 
 # ─── Trips ────────────────────────────────────────────────────────

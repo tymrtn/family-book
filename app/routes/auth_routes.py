@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import SESSION_COOKIE_NAME, get_current_user, require_auth
+from app.auth import SESSION_COOKIE_NAME, get_current_user, require_admin, require_auth
 from app.config import get_settings
 from app.database import get_db
 from app.models.person import Person
@@ -183,4 +183,28 @@ async def get_me(current_user: Person = Depends(require_auth)):
         "display_name": current_user.display_name,
         "is_admin": current_user.is_admin,
         "branch": current_user.branch,
+    }
+
+
+class InviteCreateRequest(BaseModel):
+    person_id: str
+
+
+@router.post("/api/invites")
+async def create_invite_route(
+    body: InviteCreateRequest,
+    current_user: Person = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Person).where(Person.id == body.person_id))
+    person = result.scalar_one_or_none()
+    if not person:
+        raise HTTPException(status_code=404, detail="Person not found")
+
+    invite = await create_invite(db, person.id, current_user.id)
+    settings = get_settings()
+    return {
+        "token": invite.raw_token,
+        "url": f"{settings.BASE_URL}/invite/{invite.raw_token}",
+        "person_id": person.id,
     }

@@ -1,0 +1,15 @@
+{% if demo_counts.total > 0 %}
+<div class="card mb-16" id="admin-demo-data">
+  <div class="card__body">
+    <h2 style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; color: var(--brown-dark);">Demo Data</h2>
+    <p class="text-muted" style="margin-bottom: 14px;">
+      {{ demo_counts.persons }} demo people and {{ demo_counts.moments }} demo moments are still in this site.
+    </p>
+    <form hx-post="/admin/demo-cleanup" hx-target="#admin-demo-data" hx-swap="outerHTML">
+      <button type="submit" class="btn btn--danger btn--sm">Remove all demo data</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div id="admin-demo-data"></div>
+{% endif %}

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -175,6 +176,16 @@ def app_under_test(phase1_app: FastAPI):
     except Exception:
         return phase1_app
     return create_app()
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    from app.services import site_settings
+
+    site_settings._cache = None
+    yield
+    site_settings._cache = None
 
 
 @pytest_asyncio.fixture

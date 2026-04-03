@@ -1,0 +1,23 @@
+<div class="card onboarding-shell">
+  <div class="card__body">
+    <div class="setup-stepper">
+      <span class="setup-stepper__item setup-stepper__item--active">1. Clean up</span>
+      <span class="setup-stepper__item">2. Add people</span>
+      <span class="setup-stepper__item">3. Invite</span>
+    </div>
+    <h2 class="setup-title">Remove demo data?</h2>
+    <p class="text-muted" style="margin-bottom: 18px;">
+      Your site starts with {{ seed_counts.persons }} demo people and {{ seed_counts.moments }} demo moments. You can clear them now or keep them for reference.
+    </p>
+    <div class="setup-actions">
+      <form hx-post="/setup/clean" hx-target="#setup-wizard" hx-swap="innerHTML">
+        <input type="hidden" name="action" value="remove">
+        <button type="submit" class="btn btn--danger btn--lg">Remove demo data</button>
+      </form>
+      <form hx-post="/setup/clean" hx-target="#setup-wizard" hx-swap="innerHTML">
+        <input type="hidden" name="action" value="keep">
+        <button type="submit" class="btn btn--outline btn--lg">Keep demo data</button>
+      </form>
+    </div>
+  </div>
+</div>

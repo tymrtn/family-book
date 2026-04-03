@@ -15,6 +15,7 @@ from app.models.base import Base
 from app.models.moments import Moment, MomentComment, MomentReaction
 from app.models.person import Person
 from app.models.relationships import ParentChild, Partnership
+from app.services.onboarding_service import SEED_SOURCE
 
 
 SEED_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "family_tree.json")
@@ -35,8 +36,11 @@ async def seed(session: AsyncSession) -> None:
                     existing.languages = v
                 elif k != "id":
                     setattr(existing, k, v)
+            existing.source = SEED_SOURCE
         else:
-            person = Person(**{k: v for k, v in p.items() if k != "languages"})
+            person_data = {k: v for k, v in p.items() if k != "languages"}
+            person_data["source"] = SEED_SOURCE
+            person = Person(**person_data)
             if "languages" in p:
                 person.languages = p["languages"]
             session.add(person)
@@ -45,15 +49,25 @@ async def seed(session: AsyncSession) -> None:
     rel_count = 0
     for r in data.get("parent_child", []):
         result = await session.execute(select(ParentChild).where(ParentChild.id == r["id"]))
-        if not result.scalar_one_or_none():
-            session.add(ParentChild(**r))
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.source = SEED_SOURCE
+        else:
+            rel_data = dict(r)
+            rel_data["source"] = SEED_SOURCE
+            session.add(ParentChild(**rel_data))
             rel_count += 1
 
     partnership_count = 0
     for p in data.get("partnerships", []):
         result = await session.execute(select(Partnership).where(Partnership.id == p["id"]))
-        if not result.scalar_one_or_none():
-            session.add(Partnership(**p))
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.source = SEED_SOURCE
+        else:
+            partnership_data = dict(p)
+            partnership_data["source"] = SEED_SOURCE
+            session.add(Partnership(**partnership_data))
             partnership_count += 1
 
     moment_count = 0
@@ -72,9 +86,11 @@ async def seed(session: AsyncSession) -> None:
             for k, v in moment_data.items():
                 if k != "id":
                     setattr(existing, k, v)
+            existing.source = SEED_SOURCE
             if media_ids_list is not None:
                 existing.media_ids = media_ids_list
         else:
+            moment_data["source"] = SEED_SOURCE
             moment_obj = Moment(**moment_data)
             if media_ids_list:
                 moment_obj.media_ids = media_ids_list

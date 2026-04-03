@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Claim This Site — {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px; padding-bottom: 48px;">
+  <div class="card onboarding-shell">
+    <div class="card__body">
+      <p class="eyebrow">First-run setup</p>
+      <h1 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 10px;">Claim this Family Book</h1>
+      <p class="text-muted" style="margin-bottom: 24px;">Create the first admin account and set the family name that appears across the site.</p>
+
+      <form method="post" action="/claim" class="setup-form">
+        <div class="setup-grid">
+          <div class="form-group">
+            <label for="first-name">First name</label>
+            <input id="first-name" name="first_name" class="form-input" maxlength="200" required autocomplete="given-name">
+          </div>
+          <div class="form-group">
+            <label for="last-name">Last name</label>
+            <input id="last-name" name="last_name" class="form-input" maxlength="200" required autocomplete="family-name">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" class="form-input" maxlength="320" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="family-name">Family name</label>
+          <input id="family-name" name="family_name" class="form-input" maxlength="120" required value="{{ site_settings.title or '' }}" placeholder="Rivera Family Book">
+        </div>
+        <div class="setup-actions">
+          <button type="submit" class="btn btn--primary btn--lg">Claim and continue</button>
+          <a href="/demo" class="btn btn--outline btn--lg">Explore the demo</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -18,6 +18,7 @@ from app.routes.media import router as media_router
 from app.routes.moments import router as moments_router
 from app.routes.trips import router as trips_router
 from app.routes.upload import router as upload_router
+from app.services.site_settings import SITE_STATE_UNCLAIMED, get_site_settings
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,19 @@ def create_app() -> FastAPI:
 
     # 401 handler: redirect to /login for page routes, JSON for API routes
     _API_PREFIXES = ("/api/", "/auth/", "/health", "/invite/")
+    _UNCLAIMED_ALLOWED = (
+        "/",
+        "/claim",
+        "/demo",
+        "/health",
+        "/static",
+        "/login",
+        "/auth",
+        "/invite",
+        "/api/invite",
+        "/locale",
+        "/site/settings",
+    )
 
     @application.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
@@ -97,6 +111,18 @@ def create_app() -> FastAPI:
             status_code=exc.status_code,
             content={"detail": exc.detail},
         )
+
+    @application.middleware("http")
+    async def unclaimed_site_middleware(request: Request, call_next):
+        path = request.url.path
+        site_settings = get_site_settings()
+        if (
+            site_settings.state == SITE_STATE_UNCLAIMED
+            and not any(path == prefix or path.startswith(f"{prefix}/") for prefix in _UNCLAIMED_ALLOWED if prefix != "/")
+            and path != "/"
+        ):
+            return RedirectResponse("/", status_code=302)
+        return await call_next(request)
 
     # Security middleware
     from app.middleware.security import add_security_middleware

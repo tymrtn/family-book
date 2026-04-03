@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Setup — {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="container-wide" style="padding-top: 24px; padding-bottom: 48px;">
+  <div class="page-header mb-24">
+    <p class="eyebrow">Setup wizard</p>
+    <h1 class="page-header__title">Welcome home</h1>
+    <p class="page-header__subtitle">Replace the demo family, add your own people, and generate the first invite links.</p>
+  </div>
+
+  <div id="setup-wizard"
+       hx-get="/setup/step/1"
+       hx-trigger="load"
+       hx-swap="innerHTML">
+    <div class="card">
+      <div class="card__body">
+        <div class="spinner" style="margin: 24px auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function copyInviteLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Invite link copied');
+  } catch (err) {
+    showToast('Could not copy invite link');
+  }
+}
+</script>
+{% endblock %}

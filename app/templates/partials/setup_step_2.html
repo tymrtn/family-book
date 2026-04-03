@@ -1,0 +1,70 @@
+<div class="card onboarding-shell">
+  <div class="card__body">
+    <div class="setup-stepper">
+      <span class="setup-stepper__item setup-stepper__item--done">1. Clean up</span>
+      <span class="setup-stepper__item setup-stepper__item--active">2. Add people</span>
+      <span class="setup-stepper__item">3. Invite</span>
+    </div>
+    <h2 class="setup-title">Add family members</h2>
+    <p class="text-muted" style="margin-bottom: 18px;">Quick-add the first people in your tree. Each save creates a person and the matching relationship edge to you.</p>
+
+    {% if note %}
+    <div class="notice-card" style="margin-bottom: 16px;">{{ note }}</div>
+    {% endif %}
+
+    <form hx-post="/setup/add-member" hx-target="#setup-wizard" hx-swap="innerHTML" class="setup-form">
+      <div class="setup-grid">
+        <div class="form-group">
+          <label for="member-first-name">First name</label>
+          <input id="member-first-name" name="first_name" class="form-input" maxlength="200" required>
+        </div>
+        <div class="form-group">
+          <label for="member-last-name">Last name</label>
+          <input id="member-last-name" name="last_name" class="form-input" maxlength="200" required>
+        </div>
+      </div>
+      <div class="setup-grid">
+        <div class="form-group">
+          <label for="member-relationship">Relationship to you</label>
+          <select id="member-relationship" name="relationship" class="form-select" required>
+            <option value="parent">Parent</option>
+            <option value="child">Child</option>
+            <option value="sibling">Sibling</option>
+            <option value="partner">Partner</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="member-branch">Branch</label>
+          <input id="member-branch" name="branch" class="form-input" maxlength="100" placeholder="martin">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="member-email">Email</label>
+        <input id="member-email" name="email" type="email" class="form-input" maxlength="320" placeholder="Optional, for invites">
+      </div>
+      <div class="setup-actions">
+        <button type="submit" class="btn btn--primary">Add family member</button>
+        <button type="button" class="btn btn--outline" hx-get="/setup/invite-step" hx-target="#setup-wizard" hx-swap="innerHTML">Continue</button>
+      </div>
+    </form>
+
+    <div class="setup-list">
+      <div class="setup-list__header">Added so far</div>
+      {% if added_people %}
+      {% for person in added_people %}
+      <div class="setup-list__item">
+        <div>
+          <div class="setup-list__name">{{ person.display_name }}</div>
+          <div class="text-muted text-sm">
+            {% if person.contact_email %}{{ person.contact_email }}{% else %}No email yet{% endif %}
+            {% if person.branch %} · {{ person.branch }}{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="setup-list__empty">No family members added yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
