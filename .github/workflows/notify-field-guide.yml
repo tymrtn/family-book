@@ -1,0 +1,25 @@
+name: Notify Field Guide
+
+# On a published release, poke tmrtn-field-guide to rebuild so the orbital
+# chart reflects this project's latest release without waiting for the daily job.
+on:
+  release:
+    types: [published]
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch rebuild
+        env:
+          PAT: ${{ secrets.FIELD_GUIDE_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "::warning::FIELD_GUIDE_PAT not set — skipping Field Guide rebuild."
+            exit 0
+          fi
+          curl -sf -X POST \
+            -H "Authorization: Bearer $PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/tymrtn/tmrtn-field-guide/dispatches \
+            -d '{"event_type":"project-release"}'
