@@ -186,11 +186,12 @@ async def update_site_settings(
     request: Request,
     title: str = Form(""),
     accent: str = Form("forest"),
+    current_user: Person = Depends(require_admin),
 ):
-    """Lightweight site-level customization for first-run/landing."""
+    """Site name and accent. Admin only."""
     updated = save_site_settings(title, accent)
     locale = _get_locale(request)
-    ctx = _ctx(request, site_settings=updated, site_title=updated.title or translate("app.name", locale))
+    ctx = _ctx(request, current_user, site_settings=updated, site_title=updated.title or translate("app.name", locale))
     return templates.TemplateResponse("partials/site_settings_preview.html", ctx)
 
 

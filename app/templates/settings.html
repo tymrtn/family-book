@@ -20,6 +20,17 @@
     </div>
   </div>
 
+  {% if current_user.is_admin %}
+  <!-- Site name and accent (admin only) -->
+  <div class="settings-section">
+    <h2 class="settings-section__title">{{ t('landing.name_label') }}</h2>
+    {% include 'partials/site_settings_form.html' %}
+    <div id="setup-status" class="mt-8">
+      {% include 'partials/site_settings_preview.html' %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Profile quick link -->
   <div class="settings-section">
     <h2 class="settings-section__title">Your Profile</h2>

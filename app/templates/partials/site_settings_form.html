@@ -1,0 +1,23 @@
+<form hx-post="/site/settings" hx-target="#setup-status" hx-swap="innerHTML" class="setup-form">
+  <label for="site-title">{{ t('landing.name_label') }}</label>
+  <input id="site-title" name="title" class="form-input" value="{{ site_settings.title or site_title }}" placeholder="{{ t('landing.name_placeholder') }}" maxlength="120" autocomplete="off">
+
+  <label>{{ t('landing.accent_label') }}</label>
+  <div class="accent-grid">
+    <label class="accent-chip accent-chip--forest">
+      <input type="radio" name="accent" value="forest" {% if site_settings.accent == 'forest' %}checked{% endif %}>
+      <span>{{ t('landing.accent_forest') }}</span>
+    </label>
+    <label class="accent-chip accent-chip--ocean">
+      <input type="radio" name="accent" value="ocean" {% if site_settings.accent == 'ocean' %}checked{% endif %}>
+      <span>{{ t('landing.accent_ocean') }}</span>
+    </label>
+    <label class="accent-chip accent-chip--rose">
+      <input type="radio" name="accent" value="rose" {% if site_settings.accent == 'rose' %}checked{% endif %}>
+      <span>{{ t('landing.accent_rose') }}</span>
+    </label>
+  </div>
+
+  <button type="submit" class="btn btn--primary btn--block">{{ t('landing.save') }}</button>
+  <p class="text-sm text-muted" style="margin-top: 8px;">{{ t('landing.setup_hint') }}</p>
+</form>
