@@ -43,7 +43,9 @@
           {% else %}
           <a href="/claim" class="btn btn--primary btn--lg">Claim this site</a>
           {% endif %}
+          {% if not site_is_claimed %}
           <a href="/demo" class="btn btn--outline btn--lg">{{ t('landing.cta_demo') }}</a>
+          {% endif %}
         </div>
       </section>
 

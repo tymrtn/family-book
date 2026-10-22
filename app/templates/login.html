@@ -49,11 +49,13 @@
       </a>
       {% endif %}
 
+      {% if not site_is_claimed %}
       <div style="margin-top: 28px; text-align: center;">
         <a href="/demo" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">
           ✨ Explore the demo family
         </a>
       </div>
+      {% endif %}
     </div>
   </div>
 

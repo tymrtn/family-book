@@ -2,12 +2,14 @@
 Demo mode routes — parallel read-only view of seed data, no auth required.
 
 These routes mirror the real app routes but skip authentication entirely.
+They read the live database, so they close (404) once the site is claimed;
+after that the database holds the family's real records.
 Templates receive `demo_mode=True` to show the demo banner and hide edit controls.
 """
 
 import os
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -25,9 +27,15 @@ from app.schemas import (
     TreeResponse,
     person_to_summary,
 )
-from app.services.site_settings import get_site_settings
+from app.services.site_settings import get_site_settings, is_site_claimed
 
-router = APIRouter(prefix="/demo", tags=["demo"])
+
+async def _demo_only_before_claim() -> None:
+    if is_site_claimed(force_reload=True):
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+router = APIRouter(prefix="/demo", tags=["demo"], dependencies=[Depends(_demo_only_before_claim)])
 
 _template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=_template_dir)
